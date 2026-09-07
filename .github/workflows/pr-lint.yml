@@ -1,0 +1,66 @@
+name: pr-lint
+
+on:
+  pull_request:
+    types: [opened, edited, labeled, unlabeled, synchronize, reopened]
+
+permissions:
+  pull-requests: read
+  contents: read
+
+jobs:
+  pr-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check agent label and Model line
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          script: |
+            const ALLOWED_AGENT_LABELS = ['agent:human', 'agent:claude-code', 'agent:hermes'];
+            const pr = context.payload.pull_request;
+            const errors = [];
+
+            // --- Check 1: exactly one agent:* label, from the allowed set ---
+            const labelNames = (pr.labels || []).map((l) => l.name);
+            const agentLabels = labelNames.filter((name) => name.startsWith('agent:'));
+
+            if (agentLabels.length === 0) {
+              errors.push(
+                `No "agent:*" label found. Add exactly one of: ${ALLOWED_AGENT_LABELS.join(', ')}.`
+              );
+            } else if (agentLabels.length > 1) {
+              errors.push(
+                `Found ${agentLabels.length} "agent:*" labels (${agentLabels.join(', ')}). ` +
+                  `Exactly one is required. Remove the extras, keeping only one of: ${ALLOWED_AGENT_LABELS.join(', ')}.`
+              );
+            } else if (!ALLOWED_AGENT_LABELS.includes(agentLabels[0])) {
+              errors.push(
+                `Label "${agentLabels[0]}" is not a recognized agent label. ` +
+                  `Use exactly one of: ${ALLOWED_AGENT_LABELS.join(', ')}.`
+              );
+            }
+
+            // --- Check 2: PR body has a completed "Model:" line ---
+            const body = pr.body || '';
+            const modelLineMatch = body.match(/^Model:\s*(\S.*)?$/im);
+
+            if (!modelLineMatch) {
+              errors.push(
+                'No "Model:" line found in the PR body. Add a line in the "## Model" section ' +
+                  'formatted as "Model: <model-id>" (e.g. "Model: claude-sonnet-4-5").'
+              );
+            } else {
+              const value = (modelLineMatch[1] || '').trim();
+              const placeholderPattern = /^(<.*>|todo|tbd)$/i;
+
+              if (!value || placeholderPattern.test(value)) {
+                errors.push(
+                  `The "Model:" line is not filled in (found "${modelLineMatch[0].trim()}"). ` +
+                    'Replace the placeholder with the actual model id (e.g. "Model: claude-sonnet-4-5").'
+                );
+              }
+            }
+
+            if (errors.length > 0) {
+              core.setFailed(errors.join('\n'));
+            }
