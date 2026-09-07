@@ -27,13 +27,10 @@ jobs:
             // the label is author-controlled, and secrets/ADR-edit checks apply to
             // docs changes too. (Its own first review flagged this. #41)
             //
-            // Dependabot also skips, for a mechanical reason as much as a policy one:
-            // workflow runs triggered by dependabot[bot] read the *Dependabot* secret
-            // store, not Actions secrets, so `secrets.ANTHROPIC_API_KEY` resolves empty
-            // and the CLI exits 1 on every dependency PR. Duplicating the key into the
-            // Dependabot store would let us review lockfile SHA bumps at ~$0.70 each,
-            // which buys nothing the `node`/`python`/`gitleaks` jobs don't already prove.
-            // Those jobs still run on Dependabot PRs and are what gates the merge.
+            // Dependabot skips too: its runs read the *Dependabot* secret store, not
+            // Actions secrets, so ANTHROPIC_API_KEY resolves empty and the CLI exits 1
+            // on every dependency PR (#44-#49). Rationale and rejected alternatives in
+            // ADR-0011. The ci jobs still run on those PRs and are what gates the merge.
             const pr = context.payload.pull_request;
             const isDependabot = pr.user.login === 'dependabot[bot]';
             const shouldRun = !pr.draft && !isDependabot;

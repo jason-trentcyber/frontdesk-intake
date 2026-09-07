@@ -10,11 +10,9 @@ permissions:
 
 jobs:
   pr-lint:
-    # Dependabot PRs are exempt: the bot author IS the provenance, and there is no
-    # model behind a version bump. Requiring an `agent:*` label and a `Model:` line
-    # on them fails every dependency PR forever, which trains us to merge red.
-    # See docs/AI-GOVERNANCE.md -> Provenance. Human- and agent-authored PRs are
-    # unaffected and still fail without both.
+    # Dependabot is exempt: bot identity is the provenance. Rationale and scope
+    # in ADR-0011; policy in docs/AI-GOVERNANCE.md -> Provenance. Every other
+    # author still fails without an `agent:*` label and a `Model:` line.
     if: github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
