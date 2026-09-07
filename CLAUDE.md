@@ -23,7 +23,7 @@ frontdesk is an AI-assisted request desk for small businesses, built in public a
 | `worker/` ingestion, retrieval | 0005 retrieval | bge-small, HNSW params, RRF |
 | `worker/prompts/` | 0008 sdlc §7, 0005 | Every change runs the eval gate |
 | `evals/` | 0008 | Baseline only raised by a human commit |
-| `.github/` | 0008 | Provenance, review agent, gates |
+| `.github/` | 0008, 0011 | Provenance, review agent, gates; Dependabot exempt |
 | `docs/adr/` | `docs/adr/README.md` | Never edit a decided ADR's decision |
 
 ## Commands

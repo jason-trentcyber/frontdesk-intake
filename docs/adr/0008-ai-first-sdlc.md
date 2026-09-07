@@ -1,6 +1,6 @@
 # ADR-0008: AI-first SDLC mechanics
 
-Status: decided 2026-09-07
+Status: decided 2026-09-07. Step 3's provenance and review-agent gates are amended by ADR-0011 for Dependabot-authored PRs (2026-09-07); everything else stands.
 
 ## Decision
 Ideation → build → review → verify → operate, each with an agent touchpoint and a human gate.

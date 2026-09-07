@@ -10,6 +10,10 @@ permissions:
 
 jobs:
   pr-lint:
+    # Dependabot is exempt: bot identity is the provenance. Rationale and scope
+    # in ADR-0011; policy in docs/AI-GOVERNANCE.md -> Provenance. Every other
+    # author still fails without an `agent:*` label and a `Model:` line.
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Check agent label and Model line

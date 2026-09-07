@@ -23,11 +23,17 @@ jobs:
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
-            // Only drafts skip review. A `docs` label must NOT bypass the agent:
+            // Drafts skip review. A `docs` label must NOT bypass the agent:
             // the label is author-controlled, and secrets/ADR-edit checks apply to
             // docs changes too. (Its own first review flagged this. #41)
+            //
+            // Dependabot skips too: its runs read the *Dependabot* secret store, not
+            // Actions secrets, so ANTHROPIC_API_KEY resolves empty and the CLI exits 1
+            // on every dependency PR (#44-#49). Rationale and rejected alternatives in
+            // ADR-0011. The ci jobs still run on those PRs and are what gates the merge.
             const pr = context.payload.pull_request;
-            const shouldRun = !pr.draft;
+            const isDependabot = pr.user.login === 'dependabot[bot]';
+            const shouldRun = !pr.draft && !isDependabot;
             core.setOutput('should_run', shouldRun.toString());
 
   review:

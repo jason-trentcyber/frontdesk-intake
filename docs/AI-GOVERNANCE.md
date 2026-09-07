@@ -24,6 +24,7 @@ This repo is built with AI coding agents alongside a human. These are the rules.
 - The PR template includes a `Model:` line (e.g. `claude-sonnet-4.5`, `qwen2.5-coder-32b`). Fill it in.
 - `Co-Authored-By` trailers added by tools stay in the commit. Do not squash them away.
 - Cheap-model output (anything below Sonnet-class) never merges without the review agent passing AND a Claude-class or human review pass. Label such PRs `model:budget`.
+- **Dependabot is the one exemption (ADR-0011).** Its PRs carry no `agent:*` label, no `Model:` line, and get no review-agent pass; `pr-lint` and `review-agent` skip when the author is `dependabot[bot]`. Bot identity is the provenance for those PRs, and Dependabot-triggered runs cannot read Actions secrets, so the review agent could not run on them regardless. They are gated by `ci` (`node`, `python`, `gitleaks`, `helm-lint`, `terraform-validate`) plus a human reading the changelog. Every other author, human or agent, fails without a label and a model. See ADR-0011 for the rejected alternatives.
 
 ## What agents must read first
 
