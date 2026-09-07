@@ -1,0 +1,39 @@
+# env / secrets
+.env
+.env.*
+!.env.example
+*.tfvars
+!*.tfvars.example
+kubeconfig*
+*.pem
+
+# node
+node_modules/
+.next/
+dist/
+.turbo/
+coverage/
+
+# python
+.venv/
+__pycache__/
+*.pyc
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+
+# terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+
+# helm
+deploy/chart/charts/
+*.tgz
+
+# misc
+.DS_Store
+*.log
+.idea/
+.vscode/
+!.vscode/extensions.json
