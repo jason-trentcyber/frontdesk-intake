@@ -1,0 +1,24 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "npm"
+    directory: "/" # pnpm workspace root (pnpm-workspace.yaml); covers web/ and api/ too
+    schedule:
+      interval: "weekly"
+    groups:
+      minor-patch:
+        update-types: ["minor", "patch"]
+
+  # "uv", not "pip": worker/ is uv-managed (uv.lock) and Dependabot treats uv
+  # as its own ecosystem, distinct from and more accurate than "pip" here.
+  - package-ecosystem: "uv"
+    directory: "/worker"
+    schedule:
+      interval: "weekly"
+    groups:
+      minor-patch:
+        update-types: ["minor", "patch"]
