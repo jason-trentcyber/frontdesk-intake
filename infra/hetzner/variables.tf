@@ -5,7 +5,7 @@ variable "server_name" {
 }
 
 variable "server_type" {
-  description = "Hetzner server type. ADR-0001 amendment 2026-09-07: cax21 (Ampere ARM64, 4 vCPU / 8 GB). cx32 is discontinued and cx33 was out of stock everywhere."
+  description = "Hetzner server type. ADR-0009: cax21 (Ampere ARM64, 4 vCPU / 8 GB)."
   type        = string
   default     = "cax21"
 }

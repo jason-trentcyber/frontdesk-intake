@@ -1,7 +1,7 @@
 # infra/hetzner
 
 Terraform root that provisions the single Hetzner Cloud box the whole stack
-runs on (ADR-0001): one CX32 server, a firewall, a floating IP, and a
+runs on (ADR-0001): one cax21 (ARM64, 4 vCPU / 8 GB; ADR-0009)
 cloud-init that turns the box into a one-node k3s cluster with Traefik and
 servicelb disabled (ingress-nginx replaces Traefik, per ADR-0002).
 

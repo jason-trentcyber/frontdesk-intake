@@ -13,8 +13,8 @@ frontdesk is an AI-assisted request desk for small businesses, built in public a
 
 | Path | Governing ADR(s) | Notes |
 |---|---|---|
-| `deploy/chart/`, `deploy/values-*.yaml` | 0001 runtime, 0002 ingress | Chart must stay k3s-agnostic |
-| `infra/hetzner/` | 0001, 0002 | Terraform, cloud-init k3s |
+| `deploy/chart/`, `deploy/values-*.yaml` | 0001 runtime, 0002 ingress, 0009 arm64 | Chart must stay k3s- and arch-agnostic |
+| `infra/hetzner/` | 0001, 0002, 0009 | Terraform, cloud-init k3s; node is ARM64 |
 | `infra/aws/` | 0001 | EKS root, validate-only, never applied in v1 |
 | `web/` auth, sessions, membership | 0003 auth, 0007 tenancy | PRs touching these get `security` |
 | `api/` queue producer | 0004 queue | `Queue` interface; pgmq + SQS adapters |
