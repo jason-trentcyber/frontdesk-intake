@@ -1,0 +1,4 @@
+# Pre-existing content docs, out of scope for #8 (toolchain scaffolding).
+# Reformatting them is a separate, deliberate change, not a side effect of adding prettier.
+*.md
+pnpm-lock.yaml

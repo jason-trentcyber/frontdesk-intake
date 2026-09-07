@@ -33,7 +33,19 @@ _Five lines, pending `worker/llm/` (M3, #32)._
 
 ## Run locally
 
-_Pending M1 #10._ Requires Node 22+, pnpm, Python 3.12, uv, and Docker **or** Podman. See `docs/conventions.md` → Toolchain.
+Requires Node 22+, pnpm, Python 3.12, uv, and Docker **or** Podman. See `docs/conventions.md` → Toolchain.
+
+```
+git clone https://github.com/jason-trentcyber/frontdesk-intake.git
+cd frontdesk-intake
+cp .env.example .env
+make up               # postgres (pgvector + pgmq) + localstack
+pnpm install
+cd worker && uv sync && cd ..
+make test
+```
+
+Podman instead of Docker: prefix every `make` target with `CONTAINER=podman`, e.g. `CONTAINER=podman make up`.
 
 ## Caveats
 

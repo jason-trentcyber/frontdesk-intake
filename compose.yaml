@@ -1,0 +1,42 @@
+# Compose v2 spec, no top-level `version:` key. See docs/conventions.md → Toolchain.
+services:
+  postgres:
+    build:
+      context: ./deploy/local
+      dockerfile: postgres.Dockerfile
+    image: frontdesk/postgres-pgvector-pgmq:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-frontdesk}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-frontdesk}
+      POSTGRES_DB: ${POSTGRES_DB:-frontdesk}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./deploy/local/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-frontdesk} -d ${POSTGRES_DB:-frontdesk}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    mem_limit: 512m
+
+  localstack:
+    # Pinned: `latest` (2026.x) requires a LOCALSTACK_AUTH_TOKEN and exits without one.
+    # 4.14.0 is the last Community release that runs unauthenticated. SQS only (ADR-0004).
+    image: localstack/localstack:4.14.0
+    restart: unless-stopped
+    environment:
+      SERVICES: sqs
+    ports:
+      - "4566:4566"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    mem_limit: 512m
+
+volumes:
+  pgdata:
