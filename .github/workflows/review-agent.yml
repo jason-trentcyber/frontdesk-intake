@@ -23,11 +23,11 @@ jobs:
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
+            // Only drafts skip review. A `docs` label must NOT bypass the agent:
+            // the label is author-controlled, and secrets/ADR-edit checks apply to
+            // docs changes too. (Its own first review flagged this. #41)
             const pr = context.payload.pull_request;
-            const labels = (pr.labels || []).map((l) => l.name);
-            const nonAgentNonDocs = labels.filter((name) => name !== 'docs' && !name.startsWith('agent:'));
-            const isDocsOnly = labels.includes('docs') && nonAgentNonDocs.length === 0;
-            const shouldRun = !pr.draft && !isDocsOnly;
+            const shouldRun = !pr.draft;
             core.setOutput('should_run', shouldRun.toString());
 
   review:
@@ -50,10 +50,12 @@ jobs:
 
       - name: Build capped diff and changed-files list
         id: diff
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
           set -euo pipefail
           MAX_BYTES=150000
-          BASE="origin/${{ github.base_ref }}"
+          BASE="origin/${BASE_REF}"
 
           git diff "${BASE}...HEAD" > full.diff
           git diff --name-only "${BASE}...HEAD" > changed_files.txt
@@ -79,7 +81,7 @@ jobs:
               echo "NOTE: the diff below was truncated at ~150 KB. Add the required truncation finding."
               echo
             fi
-            echo "Diff against ${{ github.base_ref }}:"
+            echo "Diff against ${BASE_REF}:"
             echo '```diff'
             cat diff.txt
             echo '```'
