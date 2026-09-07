@@ -46,7 +46,7 @@ jobs:
           node-version: "22"
 
       - name: Install Claude Code CLI
-        run: npm install -g @anthropic-ai/claude-code
+        run: npm install -g @anthropic-ai/claude-code@2.1.263
 
       - name: Build capped diff and changed-files list
         id: diff
@@ -70,6 +70,8 @@ jobs:
           fi
 
       - name: Build review prompt
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
           {
             echo "Review this pull request diff against your system prompt rubric."
