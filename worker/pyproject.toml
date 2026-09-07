@@ -1,0 +1,23 @@
+[project]
+name = "frontdesk-worker"
+version = "0.0.0"
+description = "frontdesk triage pipeline: ingestion, retrieval, LLM + queue adapters"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.383",
+    "pytest>=8.3.3",
+    "ruff>=0.7.1",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.pyright]
+typeCheckingMode = "basic"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
