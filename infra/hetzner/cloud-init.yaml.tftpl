@@ -1,0 +1,23 @@
+#cloud-config
+package_update: true
+
+write_files:
+  - path: /etc/netplan/60-floating-ip.yaml
+    permissions: "0600"
+    content: |
+      network:
+        version: 2
+        ethernets:
+          eth0:
+            addresses:
+              - ${floating_ip}/32
+
+runcmd:
+  - netplan apply
+  - |
+    curl -sfL https://get.k3s.io | \
+    INSTALL_K3S_EXEC="server --disable traefik --disable servicelb --tls-san ${floating_ip} --node-external-ip ${floating_ip}" \
+    %{ if k3s_version != "" ~}
+    INSTALL_K3S_VERSION="${k3s_version}" \
+    %{ endif ~}
+    sh -

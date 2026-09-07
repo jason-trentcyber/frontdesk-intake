@@ -49,7 +49,7 @@ Podman instead of Docker: prefix every `make` target with `CONTAINER=podman`, e.
 
 ## Caveats
 
-Single node, no HA. This is a demo with a real production posture, not a production service. No PHI, no real personal data; seed data is fictional and demo submissions are purged after 24 hours.
+Single node, no HA, **ARM64** (Hetzner cax21); production images are arm64-native while local dev is x86, so the chart is architecture-neutral by construction. This is a demo with a real production posture, not a production service. No PHI, no real personal data; seed data is fictional and demo submissions are purged after 24 hours.
 
 ## License
 

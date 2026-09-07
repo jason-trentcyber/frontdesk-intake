@@ -1,0 +1,15 @@
+# Copy to terraform.tfvars (git-ignored) and fill in. HCLOUD_TOKEN is not a
+# Terraform variable: export it in your shell instead (see README.md).
+
+ssh_public_key = "ssh-ed25519 AAAA... jason@laptop"
+
+# Jason's IP(s) that may SSH in, as CIDRs.
+admin_ips = ["203.0.113.10/32"]
+
+# The Hermes VPS, as a /32 CIDR.
+vps_ip = "203.0.113.20/32"
+
+# Optional: interactive admin keys, by short name.
+extra_ssh_public_keys = {
+  "jason-laptop" = "ssh-ed25519 AAAA... jason@laptop"
+}
