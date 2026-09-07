@@ -20,7 +20,7 @@ jobs:
     steps:
       - name: Decide whether this PR needs review
         id: check
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             // Drafts skip review. A `docs` label must NOT bypass the agent:
@@ -142,7 +142,7 @@ jobs:
             > review.json
 
       - name: Post review and enforce blocking findings
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const fs = require('fs');
