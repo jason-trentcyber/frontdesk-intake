@@ -62,7 +62,7 @@ jobs:
 
           SIZE=$(wc -c < full.diff)
           if [ "$SIZE" -gt "$MAX_BYTES" ]; then
-            head -c "$MAX_BYTES" full.diff > diff.txt
+            head -c "$MAX_BYTES" full.diff | head -n -1 > diff.txt
             echo "truncated=true" >> "$GITHUB_OUTPUT"
           else
             cp full.diff diff.txt
@@ -72,6 +72,7 @@ jobs:
       - name: Build review prompt
         env:
           BASE_REF: ${{ github.base_ref }}
+          TRUNCATED: ${{ steps.diff.outputs.truncated }}
         run: |
           {
             echo "Review this pull request diff against your system prompt rubric."
@@ -79,7 +80,7 @@ jobs:
             echo "Changed files:"
             cat changed_files.txt
             echo
-            if [ "${{ steps.diff.outputs.truncated }}" = "true" ]; then
+            if [ "${TRUNCATED}" = "true" ]; then
               echo "NOTE: the diff below was truncated at ~150 KB. Add the required truncation finding."
               echo
             fi
@@ -140,7 +141,7 @@ jobs:
           script: |
             const fs = require('fs');
             const raw = JSON.parse(fs.readFileSync('review.json', 'utf8'));
-            // Verified against claude 2.1.236: with --json-schema the conforming object is
+            // Verified against claude 2.1.236 locally and 2.1.263 in CI (run on #41): with --json-schema the conforming object is
             // under `structured_output`; `result` holds the same JSON as a string.
             if (raw.is_error || raw.subtype !== 'success') {
               core.setFailed(`Review agent did not complete: subtype=${raw.subtype} error=${raw.api_error_status || raw.result || 'unknown'}`);
