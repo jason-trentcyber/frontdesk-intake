@@ -69,3 +69,9 @@ terraform destroy && terraform apply              # clean re-apply
 - A CI apply job — see #18 (deploy job) and `docs/conventions.md` → Infra.
 - Cluster bootstrap (ingress-nginx, cert-manager, sealed-secrets, monitoring,
   Loki, OTel) — #16.
+
+## Where to run apply
+
+For now, `terraform plan`/`apply` run from the Hermes VPS (`trentcyber-main`), which holds `HCLOUD_TOKEN` in its env and the SSH key the provisioners use. State is local to that clone (`terraform.tfstate`, git-ignored) until the Object Storage backend lands. CI runs `fmt -check` and `validate` only; it never applies this root (ADR-0001, AI-GOVERNANCE: agents do not apply infra).
+
+Architecture is **arm64** (cax21). Anything you `kubectl run` by hand must have an arm64 image.

@@ -4,7 +4,7 @@ Format: context, decision, consequences, alternatives rejected. One file per dec
 
 | # | Title | Status |
 |---|---|---|
-| 0001 | Runtime: k3s on Hetzner, portable Helm chart | decided |
+| 0001 | Runtime: k3s on Hetzner, portable Helm chart | decided, amended 2026-09-07 (cax21 ARM64) |
 | 0002 | Ingress and edge: ingress-nginx, cert-manager, Cloudflare in front | decided |
 | 0003 | Auth: Auth.js with Google and GitHub, users in our Postgres | decided |
 | 0004 | Queue: pgmq in production, SQS adapter tested against LocalStack | decided |

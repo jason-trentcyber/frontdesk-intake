@@ -5,9 +5,9 @@ variable "server_name" {
 }
 
 variable "server_type" {
-  description = "Hetzner server type. ADR-0001: CX32 (4 vCPU / 8 GB)."
+  description = "Hetzner server type. ADR-0001 amendment 2026-09-07: cax21 (Ampere ARM64, 4 vCPU / 8 GB). cx32 is discontinued and cx33 was out of stock everywhere."
   type        = string
-  default     = "cx32"
+  default     = "cax21"
 }
 
 variable "image" {
@@ -17,9 +17,9 @@ variable "image" {
 }
 
 variable "location" {
-  description = "Hetzner datacenter location."
+  description = "Hetzner datacenter location. nbg1 and hel1 had cax21 stock on 2026-09-07; fsn1 did not."
   type        = string
-  default     = "fsn1"
+  default     = "nbg1"
 }
 
 variable "ssh_public_key" {
