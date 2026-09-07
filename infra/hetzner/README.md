@@ -1,7 +1,7 @@
 # infra/hetzner
 
 Terraform root that provisions the single Hetzner Cloud box the whole stack
-runs on (ADR-0001): one cax21 (ARM64, 4 vCPU / 8 GB; ADR-0009)
+runs on (ADR-0001): one cx23 (x86, 2 vCPU / 4 GB; ADR-0010)
 cloud-init that turns the box into a one-node k3s cluster with Traefik and
 servicelb disabled (ingress-nginx replaces Traefik, per ADR-0002).
 
@@ -74,4 +74,4 @@ terraform destroy && terraform apply              # clean re-apply
 
 For now, `terraform plan`/`apply` run from the Hermes VPS (`trentcyber-main`), which holds `HCLOUD_TOKEN` in its env and the SSH key the provisioners use. State is local to that clone (`terraform.tfstate`, git-ignored) until the Object Storage backend lands. CI runs `fmt -check` and `validate` only; it never applies this root (ADR-0001, AI-GOVERNANCE: agents do not apply infra).
 
-Architecture is **arm64** (cax21). Anything you `kubectl run` by hand must have an arm64 image.
+Applied 2026-09-07: server `frontdesk` in nbg1, floating IP 167.233.178.242, k3s v1.36.4+k3s1. Kubeconfig at `infra/hetzner/kubeconfig` on the VPS (git-ignored).

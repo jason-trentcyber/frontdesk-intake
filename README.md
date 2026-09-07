@@ -49,7 +49,7 @@ Podman instead of Docker: prefix every `make` target with `CONTAINER=podman`, e.
 
 ## Caveats
 
-Single node, no HA, **ARM64** (Hetzner cax21); production images are arm64-native while local dev is x86, so the chart is architecture-neutral by construction. This is a demo with a real production posture, not a production service. No PHI, no real personal data; seed data is fictional and demo submissions are purged after 24 hours.
+Single node, no HA (Hetzner cx23, 4 GB). Metrics and logs ship to a separate monitoring host rather than running Prometheus/Loki on the node (ADR-0010). This is a demo with a real production posture, not a production service. No PHI, no real personal data; seed data is fictional and demo submissions are purged after 24 hours.
 
 ## License
 

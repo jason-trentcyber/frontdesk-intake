@@ -5,9 +5,9 @@ variable "server_name" {
 }
 
 variable "server_type" {
-  description = "Hetzner server type. ADR-0009: cax21 (Ampere ARM64, 4 vCPU / 8 GB)."
+  description = "Hetzner server type. ADR-0010: cx23 (x86, 2 vCPU / 4 GB); observability runs off-node on the Hermes VPS."
   type        = string
-  default     = "cax21"
+  default     = "cx23"
 }
 
 variable "image" {
@@ -17,7 +17,7 @@ variable "image" {
 }
 
 variable "location" {
-  description = "Hetzner datacenter location. nbg1 and hel1 had cax21 stock on 2026-09-07; fsn1 did not."
+  description = "Hetzner datacenter location. nbg1 chosen 2026-09-07 (ADR-0010)."
   type        = string
   default     = "nbg1"
 }

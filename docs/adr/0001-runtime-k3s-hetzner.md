@@ -1,6 +1,6 @@
 # ADR-0001: Runtime is k3s on a Hetzner Cloud box, deployed by a portable Helm chart
 
-Status: decided 2026-09-07. Node type and architecture superseded by ADR-0009 (2026-09-07); everything else stands.
+Status: decided 2026-09-07. Node type superseded by ADR-0010 (2026-09-07: cx23, observability off-node); everything else stands.
 
 ## Context
 Resume and posting emphasize Kubernetes, AWS, IaC. Budget is a hobby budget; managed EKS costs ~$73/mo for the control plane alone before nodes. Jason already pays for Hetzner.

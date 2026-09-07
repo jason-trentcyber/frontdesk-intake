@@ -13,8 +13,8 @@ frontdesk is an AI-assisted request desk for small businesses, built in public a
 
 | Path | Governing ADR(s) | Notes |
 |---|---|---|
-| `deploy/chart/`, `deploy/values-*.yaml` | 0001 runtime, 0002 ingress, 0009 arm64 | Chart must stay k3s- and arch-agnostic |
-| `infra/hetzner/` | 0001, 0002, 0009 | Terraform, cloud-init k3s; node is ARM64 |
+| `deploy/chart/`, `deploy/values-*.yaml` | 0001 runtime, 0002 ingress, 0010 sizing | Chart stays k3s-agnostic; total requests < 2.8 GB |
+| `infra/hetzner/` | 0001, 0002, 0010 | Terraform, cloud-init k3s; 4 GB x86 node, observability off-node |
 | `infra/aws/` | 0001 | EKS root, validate-only, never applied in v1 |
 | `web/` auth, sessions, membership | 0003 auth, 0007 tenancy | PRs touching these get `security` |
 | `api/` queue producer | 0004 queue | `Queue` interface; pgmq + SQS adapters |
@@ -70,4 +70,4 @@ uv run --project worker python -m worker
 - Repo: `github.com/jason-trentcyber/frontdesk-intake`, Apache-2.0, public. Site: `https://frontdesk.jtrent.dev`.
 - Two seeded orgs: `bright-smile-dental` (public demo) and `harbor-legal` (private). All data fictional.
 - Production LLM: Claude Haiku 4.5 via OpenRouter, $10/month cap. Bedrock adapter is switch-proven, not live.
-- One k3s node on Hetzner (8 GB). Resource limits are mandatory in the chart.
+- One k3s node on Hetzner (cx23, 4 GB, x86) at 167.233.178.242 (floating IP). Observability lives on the Hermes VPS, not the cluster (ADR-0010). Resource limits are mandatory in the chart.

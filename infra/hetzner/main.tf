@@ -41,6 +41,14 @@ resource "hcloud_firewall" "frontdesk" {
   }
 
   rule {
+    description = "Kubernetes API from the same admin sources as SSH (CI deploy job goes via the VPS for now)"
+    direction   = "in"
+    protocol    = "tcp"
+    port        = "6443"
+    source_ips  = local.ssh_source_ips
+  }
+
+  rule {
     description = "HTTP from Cloudflare only"
     direction   = "in"
     protocol    = "tcp"

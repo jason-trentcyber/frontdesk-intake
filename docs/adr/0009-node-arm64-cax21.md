@@ -1,6 +1,6 @@
 # ADR-0009: Node is a Hetzner cax21 (Ampere ARM64), superseding the CX32 choice in ADR-0001
 
-Status: decided 2026-09-07. Supersedes the server-type and architecture clause of ADR-0001; the rest of ADR-0001 stands.
+Status: superseded by ADR-0010 on 2026-09-07, never applied. Hetzner rejected cax21 in every location at apply time despite the availability API saying otherwise. Kept for the record: the arm64 analysis below is still valid if an ARM node becomes available.
 
 ## Context
 ADR-0001 sized the node as a CX32 (x86, 4 vCPU / 8 GB, ~€8/mo). On 2026-09-07, at first `terraform plan`, CX32 was discontinued and its successor cx33 (€9.99) had no stock in any Hetzner location (checked via the datacenters API, not just the console). Options with stock at 8 GB: cax21 (ARM64, €12.49), cpx31 (x86, €20.49), cpx32 (x86, €41.99). 8 GB is the floor once kube-prometheus-stack and Loki run alongside Postgres and the app (~5–5.5 GB idle), so dropping to a 4 GB x86 box would mean cutting requirement N3.

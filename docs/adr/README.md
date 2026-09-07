@@ -4,7 +4,7 @@ Format: context, decision, consequences, alternatives rejected. One file per dec
 
 | # | Title | Status |
 |---|---|---|
-| 0001 | Runtime: k3s on Hetzner, portable Helm chart | decided; node type superseded by 0009 |
+| 0001 | Runtime: k3s on Hetzner, portable Helm chart | decided; node type superseded by 0010 |
 | 0002 | Ingress and edge: ingress-nginx, cert-manager, Cloudflare in front | decided |
 | 0003 | Auth: Auth.js with Google and GitHub, users in our Postgres | decided |
 | 0004 | Queue: pgmq in production, SQS adapter tested against LocalStack | decided |
@@ -12,4 +12,5 @@ Format: context, decision, consequences, alternatives rejected. One file per dec
 | 0006 | LLM routing: OpenRouter primary, Bedrock adapter switch-proven | decided |
 | 0007 | Tenancy: two seeded orgs, org_id scoping plus RLS | decided |
 | 0008 | AI-first SDLC: provenance, review agent, eval gate, ops loop | decided |
-| 0009 | Node: Hetzner cax21 ARM64 (supersedes 0001's CX32) | decided |
+| 0009 | Node: Hetzner cax21 ARM64 | superseded by 0010, never applied |
+| 0010 | Node: Hetzner cx23 (4 GB); observability off-node on the VPS | decided, applied |
