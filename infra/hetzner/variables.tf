@@ -48,3 +48,9 @@ variable "k3s_version" {
   type        = string
   default     = ""
 }
+
+variable "extra_ssh_public_keys" {
+  description = "Additional public keys for interactive root SSH, keyed by a short name (e.g. jason-laptop). The deploy key in ssh_public_key is what Terraform itself uses."
+  type        = map(string)
+  default     = {}
+}

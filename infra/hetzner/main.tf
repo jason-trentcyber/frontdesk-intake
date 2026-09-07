@@ -21,6 +21,14 @@ resource "hcloud_ssh_key" "admin" {
   public_key = var.ssh_public_key
 }
 
+# Extra human admin keys (Jason's laptop). The deploy key above is what
+# Terraform's provisioners use; these are for interactive access.
+resource "hcloud_ssh_key" "extra" {
+  for_each   = var.extra_ssh_public_keys
+  name       = "${var.server_name}-${each.key}"
+  public_key = each.value
+}
+
 resource "hcloud_firewall" "frontdesk" {
   name = "${var.server_name}-fw"
 
@@ -62,7 +70,7 @@ resource "hcloud_server" "frontdesk" {
   server_type  = var.server_type
   image        = var.image
   location     = var.location
-  ssh_keys     = [hcloud_ssh_key.admin.id]
+  ssh_keys     = concat([hcloud_ssh_key.admin.id], [for k in hcloud_ssh_key.extra : k.id])
   firewall_ids = [hcloud_firewall.frontdesk.id]
 
   user_data = templatefile("${path.module}/cloud-init.yaml.tftpl", {
