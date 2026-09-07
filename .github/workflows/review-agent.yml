@@ -123,7 +123,7 @@ jobs:
             --bare \
             --append-system-prompt-file docs/review-rubric.md \
             --output-format json \
-            --json-schema schema.json \
+            --json-schema "$(cat schema.json)" \
             --model sonnet \
             --max-turns 6 \
             --max-budget-usd 1.00 \
@@ -136,9 +136,21 @@ jobs:
           script: |
             const fs = require('fs');
             const raw = JSON.parse(fs.readFileSync('review.json', 'utf8'));
-            // Claude Code's --output-format json may wrap the schema-conforming
-            // object under a `result` field alongside run metadata; accept either shape.
-            const parsed = Array.isArray(raw.findings) ? raw : raw.result;
+            // Verified against claude 2.1.236: with --json-schema the conforming object is
+            // under `structured_output`; `result` holds the same JSON as a string.
+            if (raw.is_error || raw.subtype !== 'success') {
+              core.setFailed(`Review agent did not complete: subtype=${raw.subtype} error=${raw.api_error_status || raw.result || 'unknown'}`);
+              return;
+            }
+            let parsed = raw.structured_output;
+            if (!parsed && typeof raw.result === 'string') {
+              try { parsed = JSON.parse(raw.result); } catch (e) { parsed = null; }
+            }
+            if (!parsed || !Array.isArray(parsed.findings)) {
+              core.setFailed('Review agent output did not match the schema (no findings array).');
+              return;
+            }
+            core.info(`Review cost: $${raw.total_cost_usd ?? '?'} over ${raw.num_turns ?? '?'} turns`);
 
             const summary = parsed.summary || '(no summary provided)';
             const findings = Array.isArray(parsed.findings) ? parsed.findings : [];
