@@ -6,7 +6,7 @@ Customers submit requests through a public form. The system classifies each requ
 
 **Status:** Milestone 1 (skeleton and SDLC scaffolding). Nothing deployed yet.
 
-Live site: `https://frontdesk.jtrent.dev` (not yet) · Board: (pending) · Docs: [`REQUIREMENTS.md`](REQUIREMENTS.md), [`docs/adr/`](docs/adr/README.md), [`docs/AI-GOVERNANCE.md`](docs/AI-GOVERNANCE.md)
+Live site: `https://frontdesk.jtrent.dev` (not yet) · Board: [github.com/users/jason-trentcyber/projects/1](https://github.com/users/jason-trentcyber/projects/1) · Docs: [`REQUIREMENTS.md`](REQUIREMENTS.md), [`docs/adr/`](docs/adr/README.md), [`docs/AI-GOVERNANCE.md`](docs/AI-GOVERNANCE.md)
 
 ## Architecture
 
