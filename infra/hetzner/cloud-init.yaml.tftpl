@@ -14,9 +14,14 @@ write_files:
 
 runcmd:
   - netplan apply
+%{ if tailscale_auth_key != "" ~}
+  - |
+    curl -fsSL https://tailscale.com/install.sh | sh
+    tailscale up --auth-key='${tailscale_auth_key}' --hostname=frontdesk --accept-dns=false
+%{ endif ~}
   - |
     curl -sfL https://get.k3s.io | \
-    INSTALL_K3S_EXEC="server --disable traefik --disable servicelb --tls-san ${floating_ip} --node-external-ip ${floating_ip}" \
+    INSTALL_K3S_EXEC="server --disable traefik --disable servicelb --tls-san ${floating_ip} --node-external-ip ${floating_ip}%{ if tailscale_auth_key != "" } --tls-san $(tailscale ip -4)%{ endif ~}%{ if tailscale_ip != "" } --tls-san ${tailscale_ip}%{ endif ~}" \
     %{ if k3s_version != "" ~}
     INSTALL_K3S_VERSION="${k3s_version}" \
     %{ endif ~}

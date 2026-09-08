@@ -33,7 +33,7 @@ resource "hcloud_firewall" "frontdesk" {
   name = "${var.server_name}-fw"
 
   rule {
-    description = "SSH from Jason's IPs and the Hermes VPS"
+    description = "SSH from admin_ips (break-glass; normal admin access is over the tailnet, ADR-0010) and the Hermes VPS"
     direction   = "in"
     protocol    = "tcp"
     port        = "22"
@@ -41,11 +41,19 @@ resource "hcloud_firewall" "frontdesk" {
   }
 
   rule {
-    description = "Kubernetes API from the same admin sources as SSH (CI deploy job goes via the VPS for now)"
+    description = "Kubernetes API from the same sources as SSH (break-glass; CI deploy job goes via the VPS for now)"
     direction   = "in"
     protocol    = "tcp"
     port        = "6443"
     source_ips  = local.ssh_source_ips
+  }
+
+  rule {
+    description = "Tailscale WireGuard, direct path (ADR-0010; without it VPS<->node traffic relays through DERP)"
+    direction   = "in"
+    protocol    = "udp"
+    port        = "41641"
+    source_ips  = ["0.0.0.0/0", "::/0"]
   }
 
   rule {
@@ -82,8 +90,10 @@ resource "hcloud_server" "frontdesk" {
   firewall_ids = [hcloud_firewall.frontdesk.id]
 
   user_data = templatefile("${path.module}/cloud-init.yaml.tftpl", {
-    floating_ip = hcloud_floating_ip.frontdesk.ip_address
-    k3s_version = var.k3s_version
+    floating_ip        = hcloud_floating_ip.frontdesk.ip_address
+    k3s_version        = var.k3s_version
+    tailscale_auth_key = var.tailscale_auth_key
+    tailscale_ip       = var.tailscale_ip
   })
 
   lifecycle {
