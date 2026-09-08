@@ -130,23 +130,43 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           set -euo pipefail
+          # The CLI exits non-zero on error results (error_max_turns,
+          # error_max_budget_usd, auth) but still writes the JSON. Let it
+          # through: the next step reads `subtype` and fails with the actual
+          # reason. Under `set -e` the job died here with a bare "exit code 1"
+          # and no diagnosis (#58, #57's first run). The budget cap bounds cost.
           cat prompt.txt | claude -p \
             --bare \
             --append-system-prompt-file docs/review-rubric.md \
             --output-format json \
             --json-schema "$(cat schema.json)" \
             --model sonnet \
-            --max-turns 6 \
+            --max-turns 15 \
             --max-budget-usd 1.00 \
             --allowedTools Read,Grep,Glob \
-            > review.json
+            > review.json || echo "claude exited $? (see review.json)"
+
+      - name: Upload raw review output
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: review-json-${{ github.event.pull_request.number }}-${{ github.run_attempt }}
+          path: review.json
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Post review and enforce blocking findings
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const fs = require('fs');
-            const raw = JSON.parse(fs.readFileSync('review.json', 'utf8'));
+            let raw;
+            try {
+              raw = JSON.parse(fs.readFileSync('review.json', 'utf8'));
+            } catch (e) {
+              core.setFailed(`Review agent produced no parseable JSON: ${e.message}`);
+              return;
+            }
             // Verified against claude 2.1.236 locally and 2.1.263 in CI (run on #41): with --json-schema the conforming object is
             // under `structured_output`; `result` holds the same JSON as a string.
             if (raw.is_error || raw.subtype !== 'success') {
