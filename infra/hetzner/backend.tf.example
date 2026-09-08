@@ -1,0 +1,27 @@
+# Copy to backend.tf (git-ignored, like terraform.tfvars) once a Hetzner
+# Object Storage bucket exists, then run `terraform init -migrate-state` from
+# wherever the current terraform.tfstate lives. This replaces the single
+# local state file with one durable, versioned copy — see README.md → State.
+#
+# Credentials: set AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY to the Object
+# Storage access key pair (not HCLOUD_TOKEN — Object Storage has its own
+# keys, generated separately in the Hetzner console). Never put them in this
+# file.
+terraform {
+  backend "s3" {
+    bucket = "frontdesk-tfstate" # replace with the real bucket name
+    key    = "hetzner/terraform.tfstate"
+    region = "eu-central" # Hetzner Object Storage region, not an AWS region
+
+    endpoints = {
+      s3 = "https://<region>.your-objectstorage.com" # e.g. https://fsn1.your-objectstorage.com
+    }
+
+    # Hetzner's S3-compatible endpoint isn't AWS: skip the AWS-specific checks.
+    skip_credentials_validation = true
+    skip_region_validation      = true
+    skip_requesting_account_id  = true
+    skip_s3_checksum            = true
+    use_path_style              = true
+  }
+}

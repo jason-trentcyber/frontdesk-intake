@@ -12,11 +12,19 @@ there's one operator and one environment, and a remote backend is one more
 thing to provision before there's anything to provision it for.
 
 Move to a remote backend before a second person or a CI apply job touches
-this root: Hetzner Object Storage (S3-compatible) via the `s3` backend
-(`endpoints.s3 = "https://<region>.your-objectstorage.com"`,
-`skip_credentials_validation`/`skip_region_validation`/`skip_requesting_account_id`
-= true, since it isn't AWS). Until then, only run `apply`/`destroy` from one
-place and keep `terraform.tfstate*` backed up.
+this root: Hetzner Object Storage (S3-compatible) via the `s3` backend. The
+config is drafted in `backend.tf.example` — once a bucket and an Object
+Storage key pair (separate from `HCLOUD_TOKEN`) exist, copy it to
+`backend.tf` (git-ignored) and run `terraform init -migrate-state` from
+wherever `terraform.tfstate` currently lives.
+
+**2026-09-08 stopgap:** `terraform.tfstate`/`.backup` were only ever on one
+disk with no second copy. Until the Object Storage migration above happens,
+a dated copy of both files now also lives at
+`~/backups/frontdesk-hetzner-tfstate/` on the same host — reduces one class
+of risk (an in-place mistake clobbering the only copy) but is **not** a real
+off-host backup. Don't treat this repeated by hand as the fix; do the
+migration.
 
 ## Prerequisites
 
@@ -65,7 +73,7 @@ terraform destroy && terraform apply              # clean re-apply
 
 ## Not yet here
 
-- Remote state backend (see above).
+- Remote state backend migration (config drafted in `backend.tf.example`, see above — needs a bucket + Object Storage credentials).
 - A CI apply job — see #18 (deploy job) and `docs/conventions.md` → Infra.
 - Cluster bootstrap (ingress-nginx, cert-manager, sealed-secrets, monitoring,
   Loki, OTel) — #16.
