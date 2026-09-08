@@ -1,0 +1,12 @@
+# Copy to terraform.tfvars (git-ignored) and fill in.
+#
+# cloudflare_api_token needs its own Custom Token (README.md -> "Token
+# scopes") - it is NOT the DNS-only token cert-manager uses in #16, and
+# NOT the Hermes environment's token either. Keep them separate so any one
+# can be revoked without affecting the others.
+cloudflare_api_token = "..."
+
+# Real values, not secrets - visible in the Cloudflare dashboard/API to
+# anyone with zone access. Checked 2026-09-08.
+zone_id    = "45734fe2f45bf9f4728d7cafb9949d3a" # jtrent.dev
+account_id = "ea8ea671279252a7a669e0fdeaaa55a1"
