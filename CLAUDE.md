@@ -15,7 +15,7 @@ frontdesk is an AI-assisted request desk for small businesses, built in public a
 |---|---|---|
 | `deploy/chart/`, `deploy/values-*.yaml` | 0001 runtime, 0002 ingress, 0010 sizing | Chart stays k3s-agnostic; total requests < 2.8 GB |
 | `deploy/bootstrap/` | 0001 runtime, 0002 ingress, 0010 sizing | Plain `helm upgrade --install` per chart, no Helmfile; requests <= 600 Mi |
-| `infra/hetzner/` | 0001, 0002, 0010, 0012 | Terraform, cloud-init k3s; 4 GB x86 node, observability off-node; local state, off-host copy |
+| `infra/hetzner/` | 0001, 0002, 0010, 0012, 0013 | Terraform, cloud-init k3s; 4 GB x86 node, observability off-node; local state, off-host copy; admin access over the tailnet |
 | `infra/aws/` | 0001 | EKS root, validate-only, never applied in v1 |
 | `web/` auth, sessions, membership | 0003 auth, 0007 tenancy | PRs touching these get `security` |
 | `api/` queue producer | 0004 queue | `Queue` interface; pgmq + SQS adapters |

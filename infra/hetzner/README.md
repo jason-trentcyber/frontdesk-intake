@@ -91,7 +91,9 @@ terraform destroy && terraform apply              # clean re-apply
 
 ## Firewall
 
-- `22/tcp` from `admin_ips` (Jason) and `vps_ip` (Hermes).
+- `22/tcp` and `6443/tcp` from `vps_ip` (Hermes) plus `admin_ips` if set — break-glass only;
+  normal admin access is over the tailnet (ADR-0013). `admin_ips` is `[]` today.
+- `41641/udp` from anywhere: Tailscale's direct WireGuard path (ADR-0013).
 - `80/tcp` and `443/tcp` from Cloudflare's published ranges only
   (`data.http` reads `https://www.cloudflare.com/ips-v4` and `/ips-v6` at
   plan/apply time, so the list never goes stale in committed code).
