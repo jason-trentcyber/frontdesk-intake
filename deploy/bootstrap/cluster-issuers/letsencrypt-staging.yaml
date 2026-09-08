@@ -12,8 +12,7 @@ metadata:
 spec:
   acme:
     server: https://acme-staging-v02.api.letsencrypt.org/directory
-    # Update to an inbox you actually monitor for LE expiry/policy notices.
-    email: letsencrypt@jtrent.dev
+    email: jason@trentcyber.com
     privateKeySecretRef:
       name: letsencrypt-staging-account-key
     solvers:
