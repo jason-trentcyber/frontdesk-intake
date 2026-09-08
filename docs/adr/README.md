@@ -15,3 +15,4 @@ Format: context, decision, consequences, alternatives rejected. One file per dec
 | 0009 | Node: Hetzner cax21 ARM64 | superseded by 0010, never applied |
 | 0010 | Node: Hetzner cx23 (4 GB); observability off-node on the VPS | decided, applied |
 | 0011 | Dependabot PRs exempt from the provenance and review-agent gates | decided |
+| 0012 | Terraform state stays local with an off-host copy; no remote backend yet | decided |

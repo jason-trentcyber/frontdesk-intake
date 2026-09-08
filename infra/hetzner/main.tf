@@ -85,6 +85,15 @@ resource "hcloud_server" "frontdesk" {
     floating_ip = hcloud_floating_ip.frontdesk.ip_address
     k3s_version = var.k3s_version
   })
+
+  lifecycle {
+    # Both are replace-on-change and both are normal to differ after a
+    # `terraform import` (imported servers carry no user_data hash and the
+    # key list comes back in API order). Ignoring them keeps the ADR-0012
+    # recovery path from planning a server replacement. Changing cloud-init
+    # or the key set on a live box is a deliberate destroy/apply anyway.
+    ignore_changes = [ssh_keys, user_data]
+  }
 }
 
 resource "hcloud_floating_ip_assignment" "frontdesk" {
