@@ -1,0 +1,37 @@
+# Documented swap for EKS (ADR-0001, ADR-0002, ADR-0010). Never applied in
+# v1 — infra/aws/ is validate-only. deploy/chart/ (the application chart,
+# #21) gets its own values-eks.yaml delta when it lands, per ADR-0001
+# (ingress class, storage class gp3, IRSA annotations, QUEUE_PROVIDER=sqs,
+# LLM_PROVIDER=bedrock); this file is scoped to the #16 bootstrap layer
+# only — the pieces that exist today.
+#
+# k3s has no LoadBalancer controller (servicelb is disabled, ADR-0001
+# cloud-init), so deploy/bootstrap/values/ingress-nginx.yaml runs
+# ingress-nginx as a hostNetwork DaemonSet bound to the node's 80/443 —
+# that's the k3s values-file expression of ADR-0002's ingress path. EKS has
+# a real LoadBalancer controller, so the swap is a Service type, not a
+# different data path or a different chart:
+controller:
+  kind: Deployment
+  hostNetwork: false
+  hostPort:
+    enabled: false
+  dnsPolicy: ClusterFirst
+
+  service:
+    type: LoadBalancer
+    annotations:
+      # Network Load Balancer, not the classic ELB.
+      service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+      service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
+
+  # use-forwarded-headers/real-ip-header (see the Hetzner values) are
+  # unnecessary here: an NLB in default (non-proxy-protocol) mode preserves
+  # the client source IP itself, so nginx sees it without a header hint.
+  # Cloudflare is still the edge in front of the NLB either way (ADR-0002).
+
+# cert-manager, sealed-secrets, and the observability namespace
+# (otel-collector, node-exporter, kube-state-metrics) are unchanged: no
+# Hetzner- or k3s-specific assumptions in those values files. cert-manager's
+# DNS-01-via-Cloudflare ClusterIssuers are also unchanged — Cloudflare stays
+# the DNS provider regardless of which cluster is running.

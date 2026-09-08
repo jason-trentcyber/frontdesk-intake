@@ -1,0 +1,10 @@
+# prometheus-community/prometheus-node-exporter, pinned in bootstrap.sh.
+# DaemonSet with hostNetwork/hostPID is the chart default (required for it
+# to read host metrics) — left as-is, only resources are set here.
+resources:
+  requests:
+    cpu: 25m
+    memory: 30Mi
+  limits:
+    cpu: 50m
+    memory: 64Mi

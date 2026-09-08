@@ -1,0 +1,26 @@
+# Default issuer for the acceptance test (#16) — no Let's Encrypt rate
+# limits on staging. The hello page (#18) switches to letsencrypt-prod.
+#
+# Requires the sealed Cloudflare API token secret (cert-manager namespace,
+# see ../values/sealed-secrets.yaml and README.md) already applied; DNS-01
+# is the only solver because 80/tcp is closed to Let's Encrypt's HTTP-01
+# validators by the Hetzner firewall (ADR-0002).
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: jason@trentcyber.com
+    privateKeySecretRef:
+      name: letsencrypt-staging-account-key
+    solvers:
+      - dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: cloudflare-api-token
+              key: api-token
+        selector:
+          dnsZones:
+            - jtrent.dev

@@ -13,6 +13,7 @@ worker/         Python: triage pipeline, ingestion, LLM + queue adapters
 deploy/chart/   One Helm chart for everything; nothing k3s-specific
 deploy/values-hetzner.yaml   live
 deploy/values-eks.yaml       the documented swap (never applied in v1)
+deploy/bootstrap/            In-cluster bootstrap: ingress-nginx, cert-manager, sealed-secrets, observability
 infra/hetzner/  Terraform: server, firewall, floating IP, cloud-init k3s
 infra/aws/      Terraform: EKS root, validate-only
 evals/          golden/*.jsonl, run.py, baseline.json
