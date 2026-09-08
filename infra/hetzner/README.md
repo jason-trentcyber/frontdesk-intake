@@ -7,16 +7,49 @@ servicelb disabled (ingress-nginx replaces Traefik, per ADR-0002).
 
 ## State
 
-Local state (`terraform.tfstate` in this directory, git-ignored) for now —
-there's one operator and one environment, and a remote backend is one more
-thing to provision before there's anything to provision it for.
+Local state (`terraform.tfstate` in this directory, git-ignored), by decision
+(ADR-0012): one operator, one shell, no CI apply job, and nothing sensitive in
+the file. A remote backend gets its own ADR when the first CI apply job or a
+second operator arrives.
 
-Move to a remote backend before a second person or a CI apply job touches
-this root: Hetzner Object Storage (S3-compatible) via the `s3` backend
-(`endpoints.s3 = "https://<region>.your-objectstorage.com"`,
-`skip_credentials_validation`/`skip_region_validation`/`skip_requesting_account_id`
-= true, since it isn't AWS). Until then, only run `apply`/`destroy` from one
-place and keep `terraform.tfstate*` backed up.
+**After every `apply`, copy the state off-host.** From your workstation (not
+the VPS):
+
+```
+mkdir -p ~/backups/frontdesk-tfstate
+scp trentcyber:code/frontdesk-intake/infra/hetzner/terraform.tfstate \
+  ~/backups/frontdesk-tfstate/terraform.tfstate.$(date +%FT%H%M%S)
+```
+
+A same-host copy also lives at `~/backups/frontdesk-hetzner-tfstate/` on the
+VPS; it guards against an in-place mistake, not against losing the host.
+
+**Recovery if the VPS is lost and no copy exists.** Everything in this root
+has a stable Hetzner ID and can be re-adopted:
+
+```
+cd infra/hetzner
+terraform init
+terraform import hcloud_ssh_key.admin                    118483504
+terraform import 'hcloud_ssh_key.extra["jason-nucbox"]'  118483503
+terraform import hcloud_firewall.frontdesk               11588996
+terraform import hcloud_floating_ip.frontdesk            148530476
+terraform import hcloud_server.frontdesk                 165032630
+terraform import hcloud_floating_ip_assignment.frontdesk 148530476
+terraform plan
+```
+
+Tested 2026-09-08 against the live account from a scratch copy of this root
+with an empty state: all six imports succeed and `plan` reports exactly
+`2 to add, 0 to change, 0 to destroy` — the two `null_resource` provisioner
+anchors, which re-run `cloud-init status --wait` and refetch the kubeconfig
+(harmless). Anything else in the plan means an import went to the wrong ID:
+stop and check the console before applying.
+
+The `lifecycle.ignore_changes` on `hcloud_server` for `ssh_keys` and
+`user_data` is what makes that plan clean; without it an imported server
+plans a replacement (no `user_data` hash comes back from the API, and the
+key list is in API order). See the comment in `main.tf`.
 
 ## Prerequisites
 
@@ -65,7 +98,7 @@ terraform destroy && terraform apply              # clean re-apply
 
 ## Not yet here
 
-- Remote state backend (see above).
+- Remote state backend — deliberately not (ADR-0012); revisit with the CI apply job.
 - A CI apply job — see #18 (deploy job) and `docs/conventions.md` → Infra.
 - Cluster bootstrap (ingress-nginx, cert-manager, sealed-secrets, monitoring,
   Loki, OTel) — #16.
