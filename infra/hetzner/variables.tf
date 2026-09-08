@@ -54,3 +54,16 @@ variable "extra_ssh_public_keys" {
   type        = map(string)
   default     = {}
 }
+
+variable "tailscale_auth_key" {
+  description = "Reusable, tagged (tag:frontdesk-node) Tailscale auth key. cloud-init uses it to join the tailnet on first boot; empty string skips the join entirely. Sensitive; set only in terraform.tfvars (ADR-0010)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "tailscale_ip" {
+  description = "Node's tailnet IPv4, filled in after the first manual join. Used only to add an extra k3s TLS SAN on rebuild; the live node is joined by hand, not by cloud-init (ADR-0010)."
+  type        = string
+  default     = ""
+}

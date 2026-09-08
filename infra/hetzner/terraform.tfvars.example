@@ -3,8 +3,9 @@
 
 ssh_public_key = "ssh-ed25519 AAAA... jason@laptop"
 
-# Jason's IP(s) that may SSH in, as CIDRs.
-admin_ips = ["203.0.113.10/32"]
+# Admin access is over the tailnet (ADR-0010), not a public-IP allowlist;
+# leave empty. The Hermes VPS (vps_ip below) stays as the break-glass path.
+admin_ips = []
 
 # The Hermes VPS, as a /32 CIDR.
 vps_ip = "203.0.113.20/32"
@@ -13,3 +14,15 @@ vps_ip = "203.0.113.20/32"
 extra_ssh_public_keys = {
   "jason-laptop" = "ssh-ed25519 AAAA... jason@laptop"
 }
+
+# Tailscale (ADR-0010). The live node is joined by hand; these only give a
+# from-scratch rebuild the same tailnet membership and k3s TLS SAN. See
+# README.md -> "Tailscale (manual join + rebuild parity)".
+
+# Reusable, tagged (tag:frontdesk-node) auth key from the Tailscale admin
+# console. Leave "" to skip the tailnet join in cloud-init.
+tailscale_auth_key = "tskey-auth-..."
+
+# Node's tailnet IPv4, noted after `tailscale up` on the node. Leave "" until
+# then.
+tailscale_ip = "100.x.y.z"
