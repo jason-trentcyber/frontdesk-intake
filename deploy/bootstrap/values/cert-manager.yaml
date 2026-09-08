@@ -1,0 +1,55 @@
+# jetstack/cert-manager, pinned in bootstrap.sh.
+#
+# ADR-0002: Let's Encrypt via DNS-01 (Cloudflare token), not HTTP-01 — the
+# Hetzner firewall closes 80/tcp to everything but Cloudflare's edge, so
+# Let's Encrypt's HTTP-01 validators could never reach the node. The
+# ClusterIssuers that use this are in ../cluster-issuers/.
+crds:
+  enabled: true
+  keep: true
+
+# The controller's own settings are unnamespaced (top-level) in this chart;
+# webhook and cainjector are the other two long-running components.
+resources:
+  requests:
+    cpu: 10m
+    memory: 30Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
+
+networkPolicy:
+  enabled: true
+
+webhook:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 30Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+  networkPolicy:
+    enabled: true
+
+cainjector:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 30Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+  networkPolicy:
+    enabled: true
+
+# One-shot Job that checks the API is reachable post-install; not part of
+# the steady-state pod budget, but still gets requests/limits.
+startupapicheck:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 20Mi
+    limits:
+      cpu: 20m
+      memory: 40Mi

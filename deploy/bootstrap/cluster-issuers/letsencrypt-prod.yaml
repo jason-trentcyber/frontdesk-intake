@@ -1,0 +1,23 @@
+# Real-world certs, subject to Let's Encrypt's production rate limits. Not
+# used until the hello page lands (#18); letsencrypt-staging is the default
+# for #16's acceptance test.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    # Update to an inbox you actually monitor for LE expiry/policy notices.
+    email: letsencrypt@jtrent.dev
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+    solvers:
+      - dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: cloudflare-api-token
+              key: api-token
+        selector:
+          dnsZones:
+            - jtrent.dev

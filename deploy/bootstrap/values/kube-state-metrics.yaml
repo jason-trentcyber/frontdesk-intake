@@ -1,0 +1,8 @@
+# prometheus-community/kube-state-metrics, pinned in bootstrap.sh.
+resources:
+  requests:
+    cpu: 25m
+    memory: 30Mi
+  limits:
+    cpu: 50m
+    memory: 128Mi

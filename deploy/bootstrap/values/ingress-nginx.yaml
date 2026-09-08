@@ -1,0 +1,60 @@
+# ingress-nginx/ingress-nginx, pinned in bootstrap.sh.
+#
+# ADR-0002: ingress-nginx is the data path, identical on EKS behind an NLB.
+# servicelb is disabled on this k3s node (ADR-0001 cloud-init), so there is
+# no LoadBalancer to bind a Service to. The hostNetwork DaemonSet below is
+# the k3s values-file expression of that same ADR-0002 decision: it binds
+# the controller straight to the node's 80/443, which the Hetzner firewall
+# already restricts to Cloudflare's ranges (infra/hetzner/main.tf).
+# deploy/values-eks.yaml documents the swap back to `service.type:
+# LoadBalancer` (a real NLB) for EKS — same chart, values-only diff.
+controller:
+  kind: DaemonSet
+  hostNetwork: true
+  hostPort:
+    enabled: true
+  dnsPolicy: ClusterFirstWithHostNet
+
+  service:
+    type: ClusterIP
+
+  ingressClassResource:
+    default: true
+
+  # Cloudflare terminates visitor TLS and proxies to the origin (ADR-0002);
+  # without these the app only ever sees Cloudflare's IP.
+  config:
+    use-forwarded-headers: "true"
+    real-ip-header: CF-Connecting-IP
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 90Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+  networkPolicy:
+    enabled: true
+
+  # One-shot Jobs that mint the admission webhook's self-signed cert on
+  # install/upgrade; not part of the steady-state pod budget, but every
+  # container gets requests/limits per docs/conventions.md regardless.
+  admissionWebhooks:
+    createSecretJob:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 20Mi
+        limits:
+          cpu: 20m
+          memory: 40Mi
+    patchWebhookJob:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 20Mi
+        limits:
+          cpu: 20m
+          memory: 40Mi

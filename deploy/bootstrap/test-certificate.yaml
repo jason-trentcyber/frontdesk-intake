@@ -1,0 +1,17 @@
+# Acceptance test for #16: proves the staging ClusterIssuer's DNS-01 path
+# actually resolves. Delete after the acceptance run (it and its Secret
+# have no other purpose):
+#
+#   kubectl -n cert-manager delete -f deploy/bootstrap/test-certificate.yaml
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: test-staging
+  namespace: cert-manager
+spec:
+  secretName: test-staging-tls
+  issuerRef:
+    name: letsencrypt-staging
+    kind: ClusterIssuer
+  dnsNames:
+    - test.frontdesk.jtrent.dev

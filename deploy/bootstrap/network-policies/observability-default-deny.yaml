@@ -1,0 +1,15 @@
+# N4: default-deny ingress in the observability namespace (otel-collector,
+# node-exporter, kube-state-metrics). No ingress rules = deny all inbound;
+# these components only need to be scraped from the VPS once #52 wires that
+# up, which gets its own allow rule then. Egress is unrestricted — they all
+# need to reach the k8s API and, later, the VPS. Deeper policies (app
+# namespace) land in M3.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: observability
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
