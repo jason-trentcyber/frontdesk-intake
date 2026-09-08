@@ -107,6 +107,16 @@ is rebuild parity only: if the node is ever recreated from scratch, the
 make the new box join the tailnet and get the right k3s TLS SAN
 automatically, without a second manual pass.
 
+**A rebuild mints a new tailnet identity.** `tailscale up` on a fresh box
+joins as a new node (`frontdesk-1`, a new `100.x` address), not a rejoin of
+the old one — Tailscale keys off the machine's local state
+(`/var/lib/tailscale/tailscaled.state`), which a rebuild does not carry
+over. Before rebuilding, delete the old `frontdesk` machine in the
+Tailscale admin console so it doesn't linger as a stale, unreachable node;
+after the new node joins, update `tailscale_ip` in `terraform.tfvars` to
+its reported address (`tailscale ip -4` on the box, or the admin console)
+before the follow-up `terraform apply` that adds the extra k3s TLS SAN.
+
 **Tagged key, not a user key.** The auth key is minted under
 `tag:frontdesk-node` (reusable, 90-day expiry). Tagged nodes have no *node*
 key expiry, so once joined the node does not silently drop off the tailnet
