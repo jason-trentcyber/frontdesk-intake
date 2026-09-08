@@ -1,5 +1,7 @@
 terraform {
-  required_version = ">= 1.6"
+  # >= 1.10 for `use_lockfile` in the s3 backend (see backend.tf.example).
+  # Terraform 1.6-1.9 would satisfy the old floor but reject that argument.
+  required_version = ">= 1.10"
 
   required_providers {
     hcloud = {

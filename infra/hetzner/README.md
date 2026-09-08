@@ -41,6 +41,9 @@ state did not come across and the local file is still the real one.
 
 ## Prerequisites
 
+- Terraform >= 1.10 (`required_version` in versions.tf). The floor is 1.10
+  rather than 1.6 because the remote backend uses `use_lockfile`, which
+  earlier versions reject as an unsupported argument.
 - `HCLOUD_TOKEN` exported in your shell (the hcloud provider reads it
   natively; see #2 — it's already in the VPS env).
 - An SSH keypair. Copy `terraform.tfvars.example` to `terraform.tfvars` and
