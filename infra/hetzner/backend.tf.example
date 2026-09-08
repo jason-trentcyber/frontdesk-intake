@@ -7,15 +7,30 @@
 # Storage access key pair (not HCLOUD_TOKEN — Object Storage has its own
 # keys, generated separately in the Hetzner console). Never put them in this
 # file.
+#
+# Enable object versioning on the bucket at creation time. Without it, a bad
+# apply overwrites the only remote copy and there is nothing to roll back to,
+# which is the failure this whole change exists to prevent.
 terraform {
   backend "s3" {
     bucket = "frontdesk-tfstate" # replace with the real bucket name
-    key    = "hetzner/terraform.tfstate"
-    region = "eu-central" # Hetzner Object Storage region, not an AWS region
+
+    key = "hetzner/terraform.tfstate"
+
+    # Hetzner's region is the location id and must match the endpoint host:
+    # fsn1 (Falkenstein), nbg1 (Nuremberg), or hel1 (Helsinki). nbg1 keeps
+    # state next to the node, which also lives in nbg1 (ADR-0010).
+    region = "nbg1"
 
     endpoints = {
-      s3 = "https://<region>.your-objectstorage.com" # e.g. https://fsn1.your-objectstorage.com
+      s3 = "https://nbg1.your-objectstorage.com"
     }
+
+    # Terraform-native state locking via a lock object in the same bucket
+    # (terraform >= 1.10; this root requires >= 1.6, and the VPS runs 1.16).
+    # No DynamoDB equivalent exists here, so without this two concurrent
+    # applies can interleave and corrupt state.
+    use_lockfile = true
 
     # Hetzner's S3-compatible endpoint isn't AWS: skip the AWS-specific checks.
     skip_credentials_validation = true

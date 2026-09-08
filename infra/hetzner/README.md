@@ -19,12 +19,25 @@ Storage key pair (separate from `HCLOUD_TOKEN`) exist, copy it to
 wherever `terraform.tfstate` currently lives.
 
 **2026-09-08 stopgap:** `terraform.tfstate`/`.backup` were only ever on one
-disk with no second copy. Until the Object Storage migration above happens,
-a dated copy of both files now also lives at
-`~/backups/frontdesk-hetzner-tfstate/` on the same host — reduces one class
-of risk (an in-place mistake clobbering the only copy) but is **not** a real
-off-host backup. Don't treat this repeated by hand as the fix; do the
-migration.
+disk with no second copy. A dated copy of both files now also lives at
+`~/backups/frontdesk-hetzner-tfstate/` on the same host. That guards against
+an in-place mistake clobbering the only copy; it does **not** guard against
+losing the host, which is the actual risk. Do the migration.
+
+Migration, once the bucket and key pair exist:
+
+```
+cd infra/hetzner
+cp backend.tf.example backend.tf          # then edit bucket/region/endpoint
+export AWS_ACCESS_KEY_ID=...              # Object Storage key, not HCLOUD_TOKEN
+export AWS_SECRET_ACCESS_KEY=...
+terraform init -migrate-state             # answer "yes" to copy existing state
+terraform plan                            # must report no changes
+```
+
+`terraform plan` reporting **no changes** is the check that the migration
+worked: same state, new home. If it wants to create the server, stop — the
+state did not come across and the local file is still the real one.
 
 ## Prerequisites
 
