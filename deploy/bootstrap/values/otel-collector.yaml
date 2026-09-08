@@ -1,0 +1,49 @@
+# open-telemetry/opentelemetry-collector, pinned in bootstrap.sh.
+#
+# #16 scope is in-cluster only (ADR-0010): OTLP receivers with a debug/
+# no-op exporter, so the collector is healthy and swappable. #52 points the
+# exporters at the Hermes VPS once there is somewhere to send to — this
+# file is expected to change then, not before.
+mode: deployment
+replicaCount: 1
+
+# Core image is enough: only otlp/debug/batch/memory_limiter are in scope
+# for #16 (no filelog, no contrib-only receivers/exporters).
+image:
+  repository: otel/opentelemetry-collector
+command:
+  name: otelcol
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 100Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+config:
+  receivers:
+    # Only OTLP in scope for #16; the chart's other default receivers
+    # (jaeger, zipkin, prometheus self-scrape) are unused surface area.
+    jaeger: null
+    zipkin: null
+    prometheus: null
+
+  exporters:
+    debug: {}
+
+  service:
+    pipelines:
+      logs:
+        receivers: [otlp]
+        processors: [memory_limiter, batch]
+        exporters: [debug]
+      metrics:
+        receivers: [otlp]
+        processors: [memory_limiter, batch]
+        exporters: [debug]
+      traces:
+        receivers: [otlp]
+        processors: [memory_limiter, batch]
+        exporters: [debug]

@@ -4,7 +4,7 @@ COMPOSE ?= $(CONTAINER) compose
 POSTGRES_USER ?= frontdesk
 POSTGRES_DB ?= frontdesk
 
-.PHONY: help up down logs psql lint typecheck test eval
+.PHONY: help up down logs psql lint typecheck test eval bootstrap
 
 .DEFAULT_GOAL := help
 
@@ -18,6 +18,7 @@ help:
 	@echo "  typecheck  tsc (pnpm) + pyright (uv)"
 	@echo "  test       vitest (pnpm) + pytest (uv)"
 	@echo "  eval       evals/run.py against evals/golden, compared to baseline.json"
+	@echo "  bootstrap  install ingress-nginx/cert-manager/sealed-secrets/observability (#16)"
 	@echo ""
 	@echo "Use CONTAINER=podman to run against Podman instead of Docker."
 
@@ -47,3 +48,6 @@ test:
 
 eval:
 	@echo "not implemented until #30"
+
+bootstrap:
+	KUBECONFIG=infra/hetzner/kubeconfig ./deploy/bootstrap/bootstrap.sh
