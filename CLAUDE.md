@@ -13,7 +13,7 @@ frontdesk is an AI-assisted request desk for small businesses, built in public a
 
 | Path | Governing ADR(s) | Notes |
 |---|---|---|
-| `deploy/chart/`, `deploy/values-*.yaml` | 0001 runtime, 0002 ingress, 0010 sizing | Chart stays k3s-agnostic; total requests < 2.8 GB |
+| `deploy/chart/`, `deploy/values-*.yaml` | 0001 runtime, 0002 ingress, 0010 sizing, 0014 deploy | Chart stays k3s-agnostic; total requests < 2.8 GB; images by digest from GHCR |
 | `deploy/bootstrap/` | 0001 runtime, 0002 ingress, 0010 sizing | Plain `helm upgrade --install` per chart, no Helmfile; requests <= 600 Mi |
 | `infra/hetzner/` | 0001, 0002, 0010, 0012, 0013 | Terraform, cloud-init k3s; 4 GB x86 node, observability off-node; local state, off-host copy; admin access over the tailnet |
 | `infra/aws/` | 0001 | EKS root, validate-only, never applied in v1 |
@@ -25,7 +25,7 @@ frontdesk is an AI-assisted request desk for small businesses, built in public a
 | `worker/` ingestion, retrieval | 0005 retrieval | bge-small, HNSW params, RRF |
 | `worker/prompts/` | 0008 sdlc §7, 0005 | Every change runs the eval gate |
 | `evals/` | 0008 | Baseline only raised by a human commit |
-| `.github/` | 0008, 0011 | Provenance, review agent, gates; Dependabot exempt |
+| `.github/` | 0008, 0011, 0014 | Provenance, review agent, gates; Dependabot exempt; deploy.yml joins the tailnet, namespace-scoped kubeconfig |
 | `docs/adr/` | `docs/adr/README.md` | Never edit a decided ADR's decision |
 
 ## Commands
