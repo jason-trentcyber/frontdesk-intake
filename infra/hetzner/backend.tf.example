@@ -26,10 +26,10 @@ terraform {
       s3 = "https://nbg1.your-objectstorage.com"
     }
 
-    # Terraform-native state locking via a lock object in the same bucket
-    # (terraform >= 1.10; this root requires >= 1.6, and the VPS runs 1.16).
-    # No DynamoDB equivalent exists here, so without this two concurrent
-    # applies can interleave and corrupt state.
+    # Terraform-native state locking via a lock object in the same bucket.
+    # This is why versions.tf sets required_version >= 1.10. No DynamoDB
+    # equivalent exists here, so without this two concurrent applies can
+    # interleave and corrupt state.
     use_lockfile = true
 
     # Hetzner's S3-compatible endpoint isn't AWS: skip the AWS-specific checks.
