@@ -1,0 +1,5 @@
+# Live values for the Hetzner/k3s deployment (ADR-0001). Nothing extra
+# today - values.yaml's defaults already work here (ingress-nginx class
+# "nginx" is the same controller on both platforms, ADR-0002). This file
+# exists from day one so deploy.yml's -f flag and the values-eks.yaml
+# split are symmetric before there's anything Hetzner-specific to put here.

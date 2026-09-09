@@ -1,0 +1,34 @@
+# Build context is the repo root (web/Dockerfile builds a pnpm workspace
+# member). Without this, a local `docker build` run after `pnpm install`
+# would let `COPY web ./web` clobber the deps-stage's web/node_modules
+# with the host's own (wrong platform/libc) copy - CI never hits this
+# since actions/checkout starts from a clean tree, but local builds
+# should behave the same way.
+**/node_modules
+**/.next
+**/.turbo
+**/dist
+**/coverage
+.git
+
+# Python (not part of the web image, no reason to send it to the daemon)
+**/.venv
+**/__pycache__
+**/*.pyc
+**/.ruff_cache
+**/.pytest_cache
+
+# Terraform / secrets - never in a build context regardless
+**/.terraform
+**/*.tfstate
+**/*.tfstate.*
+*.tfvars
+!*.tfvars.example
+kubeconfig*
+*.pem
+.env
+.env.*
+!.env.example
+
+.DS_Store
+*.log

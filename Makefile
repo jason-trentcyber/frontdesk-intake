@@ -4,7 +4,7 @@ COMPOSE ?= $(CONTAINER) compose
 POSTGRES_USER ?= frontdesk
 POSTGRES_DB ?= frontdesk
 
-.PHONY: help up down logs psql lint typecheck test eval bootstrap
+.PHONY: help up down logs psql lint typecheck test eval bootstrap bootstrap-rbac
 
 .DEFAULT_GOAL := help
 
@@ -18,7 +18,8 @@ help:
 	@echo "  typecheck  tsc (pnpm) + pyright (uv)"
 	@echo "  test       vitest (pnpm) + pytest (uv)"
 	@echo "  eval       evals/run.py against evals/golden, compared to baseline.json"
-	@echo "  bootstrap  install ingress-nginx/cert-manager/sealed-secrets/observability (#16)"
+	@echo "  bootstrap       install ingress-nginx/cert-manager/sealed-secrets/observability (#16)"
+	@echo "  bootstrap-rbac  create the frontdesk namespace + CI deploy RBAC, human-run once (#18)"
 	@echo ""
 	@echo "Use CONTAINER=podman to run against Podman instead of Docker."
 
@@ -51,3 +52,6 @@ eval:
 
 bootstrap:
 	KUBECONFIG=infra/hetzner/kubeconfig ./deploy/bootstrap/bootstrap.sh
+
+bootstrap-rbac:
+	KUBECONFIG=infra/hetzner/kubeconfig kubectl apply -f deploy/bootstrap/rbac/

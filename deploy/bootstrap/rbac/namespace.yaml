@@ -1,0 +1,11 @@
+# Applied once, by a human, with the admin kubeconfig (make bootstrap-rbac,
+# ADR-0014). The `frontdesk` Helm release (deploy/chart/) is installed
+# into this namespace without --create-namespace, so this must exist
+# first.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: frontdesk
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest

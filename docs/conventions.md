@@ -11,9 +11,13 @@ worker/         Python: triage pipeline, ingestion, LLM + queue adapters
   llm/          LLMProvider interface + OpenRouter / Bedrock / Fake adapters. ONLY place a provider is named.
   prompts/      Versioned prompt files + CHANGELOG.md
 deploy/chart/   One Helm chart for everything; nothing k3s-specific
-deploy/values-hetzner.yaml   live
-deploy/values-eks.yaml       the documented swap (never applied in v1)
+  values.yaml            k3s-agnostic defaults
+  values-hetzner.yaml    live
+  values-eks.yaml        the documented swap (never applied in v1)
+  sealed/                SealedSecrets, applied by the same release; no plaintext, ever
 deploy/bootstrap/            In-cluster bootstrap: ingress-nginx, cert-manager, sealed-secrets, observability
+  rbac/                       namespace + least-privilege RBAC for CI deploys (ADR-0014), human-applied once
+deploy/values-eks.yaml        bootstrap layer's own EKS swap (ingress-nginx Service type) - distinct from deploy/chart/values-eks.yaml
 infra/hetzner/  Terraform: server, firewall, floating IP, cloud-init k3s
 infra/aws/      Terraform: EKS root, validate-only
 evals/          golden/*.jsonl, run.py, baseline.json

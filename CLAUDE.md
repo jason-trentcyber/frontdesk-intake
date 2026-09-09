@@ -13,8 +13,8 @@ frontdesk is an AI-assisted request desk for small businesses, built in public a
 
 | Path | Governing ADR(s) | Notes |
 |---|---|---|
-| `deploy/chart/`, `deploy/values-*.yaml` | 0001 runtime, 0002 ingress, 0010 sizing, 0014 deploy | Chart stays k3s-agnostic; total requests < 2.8 GB; images by digest from GHCR |
-| `deploy/bootstrap/` | 0001 runtime, 0002 ingress, 0010 sizing | Plain `helm upgrade --install` per chart, no Helmfile; requests <= 600 Mi |
+| `deploy/chart/` | 0001 runtime, 0002 ingress, 0010 sizing, 0014 deploy | One chart, one release; `values-hetzner.yaml`/`values-eks.yaml` live inside it; k3s-agnostic otherwise; total requests < 2.8 GB; images by digest from GHCR |
+| `deploy/bootstrap/`, `deploy/values-eks.yaml` (top-level) | 0001 runtime, 0002 ingress, 0010 sizing | Plain `helm upgrade --install` per chart, no Helmfile; requests <= 600 Mi; the top-level `values-eks.yaml` is the bootstrap ingress-nginx Service-type swap only, distinct from `deploy/chart/values-eks.yaml` |
 | `infra/hetzner/` | 0001, 0002, 0010, 0012, 0013 | Terraform, cloud-init k3s; 4 GB x86 node, observability off-node; local state, off-host copy; admin access over the tailnet |
 | `infra/aws/` | 0001 | EKS root, validate-only, never applied in v1 |
 | `infra/cloudflare/` | 0002 ingress, 0012 state | DNS/TLS-mode/WAF/rate-limit/Turnstile for `frontdesk.jtrent.dev` only; Free plan (1 rate-limit rule); local state, off-host copy |

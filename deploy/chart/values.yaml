@@ -1,0 +1,76 @@
+# k3s-agnostic defaults (ADR-0001). Nothing here references k3s, Hetzner,
+# or Cloudflare by name (docs/conventions.md -> Infra); platform-specific
+# overrides live in values-hetzner.yaml and values-eks.yaml.
+#
+# #18 ships only the `web` component (the hello page). api/worker land
+# with #22/#23 as their own Deployments in this same chart.
+
+web:
+  replicaCount: 1
+
+  image:
+    repository: ghcr.io/jason-trentcyber/frontdesk-web
+    # Pinned by digest at deploy time (ADR-0014): --set web.image.digest=sha256:...
+    # `tag` is a fallback only so this chart lints/templates without it.
+    digest: ""
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+  serviceAccount:
+    create: true
+    name: ""
+    automountServiceAccountToken: false
+
+  podSecurityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: ["ALL"]
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 3000
+
+  networkPolicy:
+    enabled: true
+    # Allow ingress only from the ingress-nginx namespace (#16); default
+    # deny otherwise.
+    fromNamespace: ingress-nginx
+
+ingress:
+  enabled: true
+  className: nginx
+  host: frontdesk.jtrent.dev
+  clusterIssuer: letsencrypt-prod
+  tlsSecretName: frontdesk-tls
+  # Delivers REQUIREMENTS F1's per-IP rate limit at ingress (#17 deferred
+  # the numeric limit here; Cloudflare's rule is a coarser burst guard).
+  # Scoped to the whole host for now - a path-scoped second Ingress for
+  # /r/* and /api/* comes when those routes exist (#27).
+  annotations:
+    nginx.ingress.kubernetes.io/limit-rpm: "10"
+    nginx.ingress.kubernetes.io/limit-burst-multiplier: "2"
+
+# Public: safe in a ConfigMap. #27 (public form) is the first real
+# consumer; the ConfigMap ships now so the chart's env wiring is complete.
+turnstile:
+  siteKey: "0x4AAAAAAEtBmgvARsd60xeS"
+  # Secret is NOT created by this chart - sealed by Jason for namespace
+  # frontdesk, shipped as deploy/chart/sealed/turnstile.sealed.yaml, and
+  # applied via templates/sealed-secrets.yaml (see sealed/README.md).
+  secretName: turnstile
+  secretKey: secret-key
