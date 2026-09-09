@@ -1,6 +1,9 @@
 # Exactly what `helm upgrade --install deploy/chart -n frontdesk --wait`
 # needs, and nothing else (ADR-0014: no cluster-admin, no cross-namespace).
 # Namespaced to `frontdesk` - this Role grants nothing outside it.
+# ADR-0015 documents this Role's full verb-by-verb surface; ADR-0016 added
+# the statefulsets/persistentvolumeclaims/cronjobs/jobs rules below for
+# Postgres (#20).
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -34,3 +37,22 @@ rules:
   - apiGroups: ["bitnami.com"]
     resources: ["sealedsecrets"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["apps"]
+    # The Postgres StatefulSet (#20, ADR-0016).
+    resources: ["statefulsets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    # Postgres's data and backups PVCs. No `delete`: CI can create the
+    # volumes and adjust labels; only a human with the admin kubeconfig
+    # deletes a PVC (ADR-0016 RBAC).
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: ["batch"]
+    # The nightly backup schedule is chart-managed (ADR-0016).
+    resources: ["cronjobs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["batch"]
+    # No `patch`: the Prisma migration Job (#21) is a Helm hook the
+    # release creates and cleans up, not something CI edits in place.
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch", "create", "delete"]

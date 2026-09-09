@@ -57,6 +57,85 @@ web:
     # deny otherwise.
     fromNamespace: ingress-nginx
 
+# Postgres 16 + pgvector + pgmq, as a StatefulSet in this same chart/release
+# (ADR-0016). postgres.enabled: false on EKS (values-eks.yaml) - the swap
+# is an externally supplied database.externalSecretName (RDS), same
+# values-file discipline as every other platform difference.
+postgres:
+  enabled: true
+
+  image:
+    repository: ghcr.io/jason-trentcyber/frontdesk-postgres
+    # Version tag = content (ADR-0016); bumped only in a deploy/postgres/
+    # image-bump PR, never rewritten by deploy.yml. `tag` is a fallback
+    # only so this chart lints/templates without a digest, same pattern
+    # as web.image above.
+    tag: "16.15-pgvector0.8.6-pgmq1.13.0"
+    digest: "sha256:6b99f66e5de740b1e5cff5726a85e8d06e63d4100bcbdacd74378b22bdb19f83"
+    pullPolicy: IfNotPresent
+
+  storage:
+    size: 10Gi
+
+  backups:
+    enabled: true
+    schedule: "15 3 * * *"
+    size: 5Gi
+    retentionDays: 14
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+  # The five tuning knobs ADR-0016 sizes for the node's memory budget.
+  # Rendered into postgres-configmap.yaml; postgres-statefulset.yaml passes
+  # it as the *entire* config_file (not an include on top of the image's
+  # own defaults - see that template's header comment for why that matters).
+  config:
+    shared_buffers: "192MB"
+    effective_cache_size: "512MB"
+    work_mem: "8MB"
+    maintenance_work_mem: "64MB"
+    max_connections: "60"
+
+  # Keys: postgres-password, frontdesk-password, frontdesk-app-password
+  # (sealed/postgres-credentials.sealed.yaml, sealed/README.md). Sealed by
+  # Jason for namespace frontdesk; this chart only ever references it by
+  # name via secretKeyRef, never reads or creates it.
+  credentialsSecret: postgres-credentials
+
+  podSecurityContext:
+    # 999 is the pgvector/pgvector base image's `postgres` system user -
+    # confirmed in deploy/postgres/Dockerfile's header comment (#20 PR A).
+    # Named USER values fail runAsNonRoot the same way web/Dockerfile's did
+    # (#18/#65); this image has no Dockerfile-level USER to make numeric in
+    # the first place, so the chart pins the uid/gid it already runs as.
+    runAsNonRoot: true
+    runAsUser: 999
+    runAsGroup: 999
+    fsGroup: 999
+    seccompProfile:
+      type: RuntimeDefault
+
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    # Exception to web's readOnlyRootFilesystem: true (ADR-0016): Postgres
+    # writes temp files and lock files outside the paths this chart gives
+    # a dedicated volume (data, the config mount, /var/run/postgresql).
+    # Covering every write path individually cost more than it's worth for
+    # a single-instance database pod; the ADR accepts this exception rather
+    # than fighting it further.
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop: ["ALL"]
+
+  service:
+    port: 5432
+
 ingress:
   enabled: true
   className: nginx

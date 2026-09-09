@@ -59,11 +59,53 @@ existing (`#27`, the public form, is the first thing that actually reads
 it). The public Turnstile site key is not a secret and ships as a
 `ConfigMap` value straight from `values.yaml`.
 
+`postgres-credentials` (keys `postgres-password`, `frontdesk-password`,
+`frontdesk-app-password`) is the same pattern, referenced by the
+`postgres` StatefulSet - not `optional: true`, since the database can't
+start without it. Not sealed by an agent; see `sealed/README.md`.
+
+## Postgres
+
+`postgres.enabled` (default `true`, `false` in `values-eks.yaml`) gates a
+whole StatefulSet's worth of resources: the `frontdesk-postgres`
+StatefulSet itself, its two Services (headless + ClusterIP), the config
+and connection ConfigMaps, the backups PVC, the nightly backup CronJob,
+and postgres's own NetworkPolicy. `helm upgrade` on an unchanged
+StatefulSet is a no-op, so ordinary `web`-only deploys never touch it.
+On EKS the swap is `postgres.enabled: false` plus an externally supplied
+`database.externalSecretName` (RDS) - none of the resources above render
+at all; see `values-eks.yaml`'s comments. Full detail (roles, backups,
+restore runbook) is in `deploy/postgres/README.md`.
+
+**One node, no HA.** A restart on every image bump (a few times a year);
+at most 24 h of data loss between nightly dumps (ADR-0016). Acceptable
+for data that is fictional or purged within 24 h by requirement
+(ADR-0007, N7) - the trigger for revisiting is a paying org's data or a
+second node.
+
+**Bumping the image:** edit the `ARG` defaults at the top of
+`deploy/postgres/Dockerfile` (`PG_MINOR`/`PGVECTOR_VERSION`/`PGMQ_VERSION`),
+open a PR the same shape as the one that first published this image -
+`postgres-image.yml` builds, refuses to overwrite an existing tag, and
+prints the new digest in the job summary - then copy that digest into
+`postgres.image.digest` (and `postgres.image.tag`, to keep the values
+file readable) in a second PR that touches only `deploy/chart/values.yaml`.
+`deploy.yml` never rebuilds or re-pins this image the way it does `web`'s;
+the pin only ever changes in a deliberate image-bump PR.
+
 ## Resource budget
 
-`web`: requests 128Mi/50m, limits 256Mi/250m, 1 replica. Counted against
-the node's ~2.8 GB total-requests budget (ADR-0010) alongside the
-bootstrap layer's ~370 Mi steady-state (`deploy/bootstrap/README.md`).
+`web`: requests 128Mi/50m, limits 256Mi/250m, 1 replica.
+`postgres`: requests 256Mi/100m, limits 1Gi/1000m, 1 replica - the
+backup CronJob's pod uses the same request/limit numbers, but only while
+it runs (a few seconds nightly), not steady-state.
+
+Steady-state chart total: **384Mi requests** (web + postgres). Counted
+against the node's ~2.8 GiB total-requests budget (ADR-0010) alongside
+the bootstrap layer's ~370 Mi steady-state
+(`deploy/bootstrap/README.md`) - **~754Mi of ~2867Mi**, with the nightly
+backup CronJob adding a further 256Mi only during its own run window
+(worst case ~1010Mi, still well under budget).
 
 ## Security posture
 
@@ -74,6 +116,19 @@ the built image with `--read-only`), all capabilities dropped. `NetworkPolicy`
 allows ingress only from the `ingress-nginx` namespace; default-deny
 otherwise (N4). The `ServiceAccount` has `automountServiceAccountToken: false` —
 the pod has no reason to call the Kubernetes API.
+
+`postgres` Pod: `runAsNonRoot`, `runAsUser`/`runAsGroup`/`fsGroup: 999`
+(the pgvector base image's own `postgres` system user - confirmed, not
+assumed; see `deploy/postgres/Dockerfile`'s header), `seccompProfile:
+RuntimeDefault`, all capabilities dropped, `automountServiceAccountToken:
+false`. **Exception:** `readOnlyRootFilesystem: false` (ADR-0016) —
+Postgres writes outside the paths this chart gives a dedicated volume;
+covering every write path individually cost more than it's worth for a
+single-instance database pod. `NetworkPolicy` allows ingress to 5432
+only from same-namespace pods labeled `app.kubernetes.io/part-of:
+frontdesk` — every component's pod template carries that label
+(including `web`'s, added for exactly this) so the convention holds as
+more components land.
 
 ## Agent verification
 
