@@ -1,0 +1,166 @@
+name: postgres-image
+
+# The database image changes a few times a year, by a deliberate version
+# bump (ADR-0016) - unlike deploy.yml's app image, this never runs on a
+# plain merge to main, only when deploy/postgres/ itself (or this
+# workflow) actually changes.
+on:
+  pull_request:
+    paths:
+      - deploy/postgres/**
+      - .github/workflows/postgres-image.yml
+  push:
+    branches: [main]
+    paths:
+      - deploy/postgres/**
+      - .github/workflows/postgres-image.yml
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/jason-trentcyber/frontdesk-postgres
+
+jobs:
+  # PRs: build locally (no push) and prove the image actually works -
+  # extensions at the right versions, both roles RLS-safe, pgmq usable
+  # end to end as the runtime role.
+  test:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Read versions from the Dockerfile
+        id: versions
+        run: |
+          PG_MINOR=$(grep -m1 '^ARG PG_MINOR=' deploy/postgres/Dockerfile | cut -d= -f2)
+          PGVECTOR_VERSION=$(grep -m1 '^ARG PGVECTOR_VERSION=' deploy/postgres/Dockerfile | cut -d= -f2)
+          PGMQ_VERSION=$(grep -m1 '^ARG PGMQ_VERSION=' deploy/postgres/Dockerfile | cut -d= -f2)
+          echo "pgvector_version=$PGVECTOR_VERSION" >> "$GITHUB_OUTPUT"
+          echo "pgmq_version=$PGMQ_VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=${PG_MINOR}-pgvector${PGVECTOR_VERSION}-pgmq${PGMQ_VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      # load: true (not push) so `docker run` below can see it - buildx
+      # doesn't put the result in the local daemon otherwise.
+      - name: Build (no push)
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: deploy/postgres
+          push: false
+          load: true
+          tags: ${{ env.IMAGE }}:${{ steps.versions.outputs.tag }}
+
+      - name: Smoke test the built image
+        run: |
+          set -euo pipefail
+          docker run -d --name pg-smoke \
+            -e POSTGRES_PASSWORD=ci-test \
+            -e POSTGRES_DB=frontdesk \
+            -e FRONTDESK_PASSWORD=ci-test \
+            -e FRONTDESK_APP_PASSWORD=ci-test \
+            "${{ env.IMAGE }}:${{ steps.versions.outputs.tag }}"
+
+          for i in $(seq 1 30); do
+            if docker exec pg-smoke pg_isready -U postgres >/dev/null 2>&1; then
+              break
+            fi
+            if [ "$i" = 30 ]; then
+              echo "postgres did not become ready in time" >&2
+              docker logs pg-smoke >&2
+              exit 1
+            fi
+            sleep 1
+          done
+
+          echo "== \dx =="
+          docker exec pg-smoke psql -U postgres -d frontdesk -c '\dx'
+
+          ext_out="$(docker exec pg-smoke psql -U postgres -d frontdesk -tAc \
+            "SELECT extname || ' ' || extversion FROM pg_extension WHERE extname IN ('vector','pgmq') ORDER BY extname;")"
+          echo "$ext_out" | grep -qx "pgmq ${{ steps.versions.outputs.pgmq_version }}" \
+            || { echo "pgmq extension version mismatch (got: $ext_out)" >&2; exit 1; }
+          echo "$ext_out" | grep -qx "vector ${{ steps.versions.outputs.pgvector_version }}" \
+            || { echo "vector extension version mismatch (got: $ext_out)" >&2; exit 1; }
+
+          bypass="$(docker exec pg-smoke psql -U postgres -d frontdesk -tAc \
+            "SELECT bool_or(rolbypassrls) FROM pg_roles WHERE rolname IN ('frontdesk','frontdesk_app');")"
+          [ "$bypass" = "f" ] || { echo "frontdesk/frontdesk_app must not have BYPASSRLS (got: $bypass)" >&2; exit 1; }
+
+          echo "== pgmq end to end, as frontdesk_app =="
+          docker exec pg-smoke psql -U frontdesk_app -d frontdesk -c "
+            SELECT pgmq.create('smoke');
+            SELECT pgmq.send('smoke', '{}'::jsonb);
+            SELECT msg_id, message FROM pgmq.read('smoke', 30, 1);
+          "
+
+      - name: Clean up
+        if: always()
+        run: docker rm -f pg-smoke || true
+
+  # main only, and only when deploy/postgres/ changed on the merged commit:
+  # publish, once, under a tag that has never been used before.
+  publish:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Read versions from the Dockerfile
+        id: versions
+        run: |
+          PG_MINOR=$(grep -m1 '^ARG PG_MINOR=' deploy/postgres/Dockerfile | cut -d= -f2)
+          PGVECTOR_VERSION=$(grep -m1 '^ARG PGVECTOR_VERSION=' deploy/postgres/Dockerfile | cut -d= -f2)
+          PGMQ_VERSION=$(grep -m1 '^ARG PGMQ_VERSION=' deploy/postgres/Dockerfile | cut -d= -f2)
+          echo "tag=${PG_MINOR}-pgvector${PGVECTOR_VERSION}-pgmq${PGMQ_VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      # Version tag = content (ADR-0016): refuse to overwrite one that
+      # already exists. `imagetools inspect` succeeding means the tag is
+      # already published on GHCR - fail loudly instead of silently
+      # re-pushing different bytes under the same tag.
+      - name: Refuse to overwrite an existing tag
+        run: |
+          if docker buildx imagetools inspect "${{ env.IMAGE }}:${{ steps.versions.outputs.tag }}" >/dev/null 2>&1; then
+            echo "::error::${{ env.IMAGE }}:${{ steps.versions.outputs.tag }} already exists on GHCR - bump PG_MINOR/PGVECTOR_VERSION/PGMQ_VERSION in deploy/postgres/Dockerfile before merging." >&2
+            exit 1
+          fi
+          echo "${{ steps.versions.outputs.tag }} is not yet published; proceeding."
+
+      - name: Log in to GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: deploy/postgres
+          push: true
+          tags: ${{ env.IMAGE }}:${{ steps.versions.outputs.tag }}
+
+      - name: Record the digest
+        run: |
+          {
+            echo "### \`${{ env.IMAGE }}:${{ steps.versions.outputs.tag }}\` published"
+            echo
+            echo '```'
+            echo "${{ steps.build.outputs.digest }}"
+            echo '```'
+            echo
+            echo "Copy this digest into \`deploy/chart/values.yaml\`'s \`postgres.image.digest\` (#20 PR B)."
+          } >> "$GITHUB_STEP_SUMMARY"
