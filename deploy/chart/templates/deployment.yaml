@@ -13,6 +13,7 @@ spec:
     metadata:
       labels:
         {{- include "frontdesk.web.selectorLabels" . | nindent 8 }}
+        {{- include "frontdesk.partOf" . | nindent 8 }}
     spec:
       serviceAccountName: {{ include "frontdesk.web.serviceAccountName" . }}
       automountServiceAccountToken: {{ .Values.web.serviceAccount.automountServiceAccountToken }}

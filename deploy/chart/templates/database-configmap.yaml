@@ -1,0 +1,33 @@
+{{- if .Values.postgres.enabled }}
+# ADR-0017 (supersedes ADR-0016's two-Secret clause).
+# Connection parameters for future consumers (#21's Prisma migration Job,
+# then api/worker Deployments) - see deploy/postgres/README.md
+# "Connecting from a consumer" for the full env-block pattern this pairs
+# with. Named *-configmap, not *-secret(s), deliberately: rendering a
+# Secret from another Secret at Helm template time isn't possible - the
+# plaintext in {{ .Values.postgres.credentialsSecret }} doesn't exist
+# until the sealed-secrets controller decrypts it on the cluster, well
+# after this template renders. So consumers build DATABASE_URL themselves
+# from these plain values plus a PGPASSWORD sourced directly via
+# secretKeyRef, using Kubernetes' own `$(VAR)` env expansion - nothing
+# plaintext ever passes through Helm or this chart. Nothing in this
+# ConfigMap is secret: a host name, a port, a database name, two role
+# names.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "frontdesk.postgres.fullname" . }}-connection
+  labels:
+    {{- include "frontdesk.postgres.labels" . | nindent 4 }}
+data:
+  PGHOST: {{ include "frontdesk.postgres.fullname" . }}
+  PGPORT: {{ .Values.postgres.service.port | quote }}
+  PGDATABASE: frontdesk
+  # Owner role - migrations only (ADR-0016's two-audience split). Pair
+  # with credentialsSecret's frontdesk-password key. Never mounted by
+  # web/api/worker.
+  MIGRATE_PGUSER: frontdesk
+  # Runtime role - what web/api/worker actually connect as. Pair with
+  # credentialsSecret's frontdesk-app-password key.
+  APP_PGUSER: frontdesk_app
+{{- end }}

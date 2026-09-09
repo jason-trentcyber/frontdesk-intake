@@ -1,0 +1,27 @@
+{{- if .Values.postgres.enabled }}
+# Same-namespace only, no namespaceSelector: a bare podSelector scopes
+# ingress to pods in this NetworkPolicy's own namespace. Any current or
+# future frontdesk component (web, api, worker, this chart's own backup
+# CronJob) that carries app.kubernetes.io/part-of: frontdesk on its pod
+# template qualifies - nothing outside the namespace ever can.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "frontdesk.postgres.fullname" . }}
+  labels:
+    {{- include "frontdesk.postgres.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "frontdesk.postgres.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: frontdesk
+      ports:
+        - protocol: TCP
+          port: {{ .Values.postgres.service.port }}
+{{- end }}

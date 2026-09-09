@@ -1,0 +1,33 @@
+{{- if .Values.postgres.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "frontdesk.postgres.fullname" . }}-config
+  labels:
+    {{- include "frontdesk.postgres.labels" . | nindent 4 }}
+data:
+  # ADR-0017 (supersedes ADR-0016's include clause).
+  # Mounted whole and passed as `-c config_file=...` (postgres-statefulset.yaml)
+  # rather than an `include` on top of the image's own postgresql.conf: the
+  # official image's include/conf.d behavior is fiddly to reproduce from a
+  # single mounted file, and a full config_file override is simpler and
+  # exactly as reviewable. The tradeoff: this file entirely REPLACES the
+  # image's own generated postgresql.conf, so anything that file would
+  # otherwise have set has to be here explicitly.
+  #
+  # listen_addresses is exactly that case, and is not one of the ADR-0016
+  # tuning knobs below - it's a correctness requirement of this deployment
+  # shape, not a values.yaml-tunable choice. PostgreSQL's own compiled-in
+  # default is 'localhost'; the only reason the image normally binds on
+  # all interfaces is a Debian packaging default baked into the
+  # postgresql.conf.sample template that `initdb` uses to generate its
+  # own postgresql.conf - which a full config_file override bypasses
+  # entirely. Verified directly: booting this image with a config_file
+  # that omits this line silently falls back to localhost-only, and the
+  # pod becomes unreachable from any other pod in the namespace.
+  postgresql.conf: |
+    listen_addresses = '*'
+    {{- range $key, $value := .Values.postgres.config }}
+    {{ $key }} = {{ $value | quote }}
+    {{- end }}
+{{- end }}

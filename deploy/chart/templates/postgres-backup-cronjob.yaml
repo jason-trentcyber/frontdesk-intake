@@ -1,0 +1,63 @@
+{{- if and .Values.postgres.enabled .Values.postgres.backups.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "frontdesk.postgres.backupCronJobName" . }}
+  labels:
+    {{- include "frontdesk.postgres.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.postgres.backups.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    metadata:
+      labels:
+        {{- include "frontdesk.postgres.labels" . | nindent 8 }}
+    spec:
+      template:
+        metadata:
+          labels:
+            {{- include "frontdesk.postgres.selectorLabels" . | nindent 12 }}
+            {{- include "frontdesk.partOf" . | nindent 12 }}
+        spec:
+          automountServiceAccountToken: false
+          restartPolicy: OnFailure
+          securityContext:
+            {{- toYaml .Values.postgres.podSecurityContext | nindent 12 }}
+          containers:
+            - name: backup
+              image: {{ include "frontdesk.postgres.image" . }}
+              imagePullPolicy: {{ .Values.postgres.image.pullPolicy }}
+              securityContext:
+                {{- toYaml .Values.postgres.containerSecurityContext | nindent 16 }}
+              env:
+                - name: PGHOST
+                  value: {{ include "frontdesk.postgres.fullname" . }}
+                - name: PGUSER
+                  value: postgres
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Values.postgres.credentialsSecret }}
+                      key: postgres-password
+              # /bin/sh is dash in this image (no `pipefail`); bash is
+              # present, verified directly.
+              command: ["/usr/bin/bash", "-c"]
+              args:
+                - |
+                  set -euo pipefail
+                  ts="$(date -u +%Y%m%dT%H%M%SZ)"
+                  pg_dumpall --globals-only > "/backups/frontdesk-${ts}.globals.sql"
+                  pg_dump -Fc frontdesk > "/backups/frontdesk-${ts}.dump"
+                  find /backups -maxdepth 1 -type f -mtime +{{ .Values.postgres.backups.retentionDays }} -delete
+              volumeMounts:
+                - name: backups
+                  mountPath: /backups
+              resources:
+                {{- toYaml .Values.postgres.resources | nindent 16 }}
+          volumes:
+            - name: backups
+              persistentVolumeClaim:
+                claimName: {{ include "frontdesk.postgres.backupsFullname" . }}
+{{- end }}

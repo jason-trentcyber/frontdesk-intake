@@ -1,0 +1,37 @@
+{{- if .Values.postgres.enabled }}
+# Headless: required by the StatefulSet's spec.serviceName (governs pod DNS
+# identity), not for client traffic - clusterIP: None means no VIP/proxying.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "frontdesk.postgres.headlessFullname" . }}
+  labels:
+    {{- include "frontdesk.postgres.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  ports:
+    - port: {{ .Values.postgres.service.port }}
+      targetPort: {{ .Values.postgres.service.port }}
+      protocol: TCP
+      name: postgres
+  selector:
+    {{- include "frontdesk.postgres.selectorLabels" . | nindent 4 }}
+---
+# The actual client-facing address (PGHOST in database-configmap.yaml):
+# frontdesk-postgres.frontdesk.svc.cluster.local, a stable ClusterIP.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "frontdesk.postgres.fullname" . }}
+  labels:
+    {{- include "frontdesk.postgres.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.postgres.service.port }}
+      targetPort: {{ .Values.postgres.service.port }}
+      protocol: TCP
+      name: postgres
+  selector:
+    {{- include "frontdesk.postgres.selectorLabels" . | nindent 4 }}
+{{- end }}

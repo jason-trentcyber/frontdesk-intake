@@ -11,9 +11,26 @@
 # DNS-01 provider regardless of which cluster is running. Nothing to
 # override here for `web` yet.
 
-# Placeholder for the first component that needs a PersistentVolumeClaim
-# (Postgres, #20) - gp3 is EKS's general-purpose SSD storage class.
-storageClassName: gp3
+# Postgres swap (ADR-0016 Consequences): no in-cluster StatefulSet on EKS,
+# an externally managed RDS for PostgreSQL 16 instead - same
+# `postgres.enabled` discipline every other platform difference in this
+# chart already uses. Both extensions this app needs are supported on RDS:
+# pgvector natively, pgmq via its SQL-only install path (`rds.extensions`
+# parameter group; RDS doesn't ship the pgmq extension binary/files, but
+# there's nothing to ship - see deploy/postgres/Dockerfile's header, pgmq
+# has been pure SQL since 1.0, so its .sql files install the same way).
+postgres:
+  enabled: false
+
+# Not yet consumed by any template - #20 PR B ships no RDS-consuming
+# component. Documents the shape for whichever of #21 (Prisma)/#22
+# (api)/#23 (worker) lands on EKS first: a human (or Terraform, outside
+# this chart) creates a Secret with this name in the frontdesk namespace,
+# holding RDS-shaped DATABASE_URL/DATABASE_APP_URL, and that PR wires its
+# Deployment's env to reference it instead of the in-chart
+# postgres-credentials-derived config (deploy/postgres/README.md).
+database:
+  externalSecretName: ""
 
 # Placeholder for the first component that needs AWS API access directly
 # (QUEUE_PROVIDER=sqs, #22) via IRSA rather than a static credential:

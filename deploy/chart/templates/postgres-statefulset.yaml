@@ -1,0 +1,113 @@
+{{- if .Values.postgres.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "frontdesk.postgres.fullname" . }}
+  labels:
+    {{- include "frontdesk.postgres.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "frontdesk.postgres.headlessFullname" . }}
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "frontdesk.postgres.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "frontdesk.postgres.selectorLabels" . | nindent 8 }}
+        {{- include "frontdesk.partOf" . | nindent 8 }}
+    spec:
+      # No Kubernetes API access needed - nothing here calls it.
+      automountServiceAccountToken: false
+      securityContext:
+        {{- toYaml .Values.postgres.podSecurityContext | nindent 8 }}
+      containers:
+        - name: postgres
+          image: {{ include "frontdesk.postgres.image" . }}
+          imagePullPolicy: {{ .Values.postgres.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.postgres.containerSecurityContext | nindent 12 }}
+          # First arg starting with "-" makes the image's own entrypoint
+          # prepend "postgres" automatically (docker-entrypoint.sh: `if
+          # [ "${1:0:1}" = '-' ]; then set -- postgres "$@"; fi`) - verified
+          # directly against the published image, not assumed.
+          args:
+            - -c
+            - config_file=/etc/postgresql/postgresql.conf
+          env:
+            # PGDATA is a subdirectory of the mount, not the mount root
+            # itself - the standard workaround for volume backends (and
+            # some CSI drivers) that leave things like lost+found at the
+            # mount point, which trips initdb's "data directory must be
+            # empty" check.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_DB
+              value: frontdesk
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgres.credentialsSecret }}
+                  key: postgres-password
+            - name: FRONTDESK_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgres.credentialsSecret }}
+                  key: frontdesk-password
+            - name: FRONTDESK_APP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgres.credentialsSecret }}
+                  key: frontdesk-app-password
+          ports:
+            - name: postgres
+              containerPort: {{ .Values.postgres.service.port }}
+              protocol: TCP
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: run
+              mountPath: /var/run/postgresql
+            - name: config
+              mountPath: /etc/postgresql/postgresql.conf
+              subPath: postgresql.conf
+              readOnly: true
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            # Lax on purpose: a slow checkpoint or a big query must not get
+            # the pod killed and restarted mid-transaction.
+            exec:
+              command: ["pg_isready", "-U", "postgres"]
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 6
+          resources:
+            {{- toYaml .Values.postgres.resources | nindent 12 }}
+      volumes:
+        # Not the PVC: this is /var/run/postgresql (the Unix socket
+        # directory), which the entrypoint recreates on every start anyway
+        # and has no reason to survive a restart.
+        - name: run
+          emptyDir: {}
+        - name: config
+          configMap:
+            name: {{ include "frontdesk.postgres.fullname" . }}-config
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          {{- include "frontdesk.postgres.labels" . | nindent 10 }}
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: {{ .Values.postgres.storage.size }}
+{{- end }}

@@ -142,7 +142,7 @@ jobs:
       - name: Scan for secrets
         run: |
           gitleaks version
-          gitleaks detect --source . --redact --verbose
+          gitleaks detect --source . --config .gitleaks.toml --redact --verbose
 
   helm-lint:
     runs-on: ubuntu-latest
@@ -180,7 +180,13 @@ jobs:
             helm template frontdesk deploy/chart -n frontdesk \
               -f "deploy/chart/$values.yaml" \
               > "/tmp/rendered-$values.yaml"
-            kubeconform -kubernetes-version 1.36.0 -summary -strict "/tmp/rendered-$values.yaml"
+            # -skip SealedSecret: kubeconform has no schema for this CRD
+            # (bitnami.com/v1alpha1, sealed-secrets) - not a real validation
+            # gap, just a kind it can't look up. #20 is the first PR to
+            # actually commit a sealed/*.yaml file, which is what surfaces
+            # this; verified locally that -strict alone fails on it and
+            # this flag is what fixes it.
+            kubeconform -kubernetes-version 1.36.0 -summary -strict -skip SealedSecret "/tmp/rendered-$values.yaml"
           done
 
       # #16: lint/template deploy/bootstrap/values/*.yaml against their

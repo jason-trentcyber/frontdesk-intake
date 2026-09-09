@@ -1,0 +1,18 @@
+{{- if and .Values.postgres.enabled .Values.postgres.backups.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "frontdesk.postgres.backupsFullname" . }}
+  labels:
+    {{- include "frontdesk.postgres.labels" . | nindent 4 }}
+  annotations:
+    # Survives `helm uninstall`. deploy/bootstrap/rbac/role.yaml grants the
+    # CI deployer no `delete` on PersistentVolumeClaims at all (ADR-0016
+    # RBAC) - only a human with the admin kubeconfig can remove backups.
+    helm.sh/resource-policy: keep
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: {{ .Values.postgres.backups.size }}
+{{- end }}
