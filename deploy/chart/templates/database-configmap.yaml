@@ -1,4 +1,5 @@
 {{- if .Values.postgres.enabled }}
+# ADR-0017 (supersedes ADR-0016's two-Secret clause).
 # Connection parameters for future consumers (#21's Prisma migration Job,
 # then api/worker Deployments) - see deploy/postgres/README.md
 # "Connecting from a consumer" for the full env-block pattern this pairs

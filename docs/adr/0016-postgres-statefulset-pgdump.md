@@ -1,6 +1,6 @@
 # ADR-0016: Postgres on the cluster as a StatefulSet in the app chart; one image (pgvector + pgmq) for local and prod; nightly `pg_dump` to a PVC, pulled off-node to the VPS
 
-Status: decided 2026-09-09. Implements #20. Amends the RBAC list of ADR-0015 (adds the resource kinds Helm needs to manage a database) and narrows nothing in ADR-0001/0004/0005/0007/0010/0012/0014; issue #20's body named CloudNativePG and Hetzner Object Storage as candidates, and this ADR rejects both, with reasons.
+Status: decided 2026-09-09. Implements #20. The "two rendered `DATABASE_URL` secrets" clause (Roles and secrets) and the "`postgresql.conf` include" clause (Sizing) are superseded by ADR-0017; everything else stands. Amends the RBAC list of ADR-0015 (adds the resource kinds Helm needs to manage a database) and narrows nothing in ADR-0001/0004/0005/0007/0010/0012/0014; issue #20's body named CloudNativePG and Hetzner Object Storage as candidates, and this ADR rejects both, with reasons.
 
 ## Context
 

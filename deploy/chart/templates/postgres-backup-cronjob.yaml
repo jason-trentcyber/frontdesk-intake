@@ -2,7 +2,7 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: {{ include "frontdesk.postgres.fullname" . }}-backup
+  name: {{ include "frontdesk.postgres.backupCronJobName" . }}
   labels:
     {{- include "frontdesk.postgres.labels" . | nindent 4 }}
 spec:

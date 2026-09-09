@@ -47,6 +47,8 @@ the real image, not assumed).
 
 ## Connecting from a consumer
 
+Decided in ADR-0017 (supersedes ADR-0016's two-rendered-Secrets clause).
+
 `database-configmap.yaml` renders a ConfigMap
 (`frontdesk-postgres-connection`) with `PGHOST`, `PGPORT`, `PGDATABASE`,
 and both role names (`MIGRATE_PGUSER` = `frontdesk`, `APP_PGUSER` =
@@ -84,7 +86,7 @@ Keep the ADR's two-audience split: web/api/worker only ever reference
 
 Two independent mechanisms (ADR-0016), not one:
 
-1. **In-cluster `CronJob`** `frontdesk-postgres-backup`, 03:15 UTC nightly:
+1. **In-cluster `CronJob`** `frontdesk-db-backup`, 03:15 UTC nightly:
    `pg_dumpall --globals-only` and `pg_dump -Fc frontdesk`, into the
    `frontdesk-db-backups` PVC (5 Gi, `helm.sh/resource-policy: keep`) as
    `frontdesk-<UTC timestamp>.dump` + `.globals.sql`, then prunes files

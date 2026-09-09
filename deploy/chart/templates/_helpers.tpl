@@ -70,6 +70,14 @@ this PVC frontdesk-db-backups specifically, and the VPS pull cron
 frontdesk-db-backups
 {{- end -}}
 
+{{/*
+Fixed name too: ADR-0016 names the CronJob frontdesk-db-backup in its
+decision and acceptance criteria (`kubectl create job --from=cronjob/frontdesk-db-backup`).
+*/}}
+{{- define "frontdesk.postgres.backupCronJobName" -}}
+frontdesk-db-backup
+{{- end -}}
+
 {{- define "frontdesk.postgres.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "frontdesk.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}

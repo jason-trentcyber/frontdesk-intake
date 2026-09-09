@@ -6,6 +6,7 @@ metadata:
   labels:
     {{- include "frontdesk.postgres.labels" . | nindent 4 }}
 data:
+  # ADR-0017 (supersedes ADR-0016's include clause).
   # Mounted whole and passed as `-c config_file=...` (postgres-statefulset.yaml)
   # rather than an `include` on top of the image's own postgresql.conf: the
   # official image's include/conf.d behavior is fiddly to reproduce from a
