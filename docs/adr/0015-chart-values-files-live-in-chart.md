@@ -1,6 +1,6 @@
 # ADR-0015: Application-chart values overlays live inside `deploy/chart/`; RBAC amendment to ADR-0014
 
-Status: decided 2026-09-09. Supersedes the file-path portion of ADR-0001 only — the decision itself (one portable Helm chart, plus a live values overlay and a documented EKS values overlay) is unchanged, only where the two overlay files live. Also documents, without amending, the full RBAC surface ADR-0014 introduced in outline.
+Status: decided 2026-09-09. RBAC list extended by ADR-0016 (StatefulSet, PVC without delete, CronJob/Job) for the database. Supersedes the file-path portion of ADR-0001 only — the decision itself (one portable Helm chart, plus a live values overlay and a documented EKS values overlay) is unchanged, only where the two overlay files live. Also documents, without amending, the full RBAC surface ADR-0014 introduced in outline.
 
 ## Context
 
