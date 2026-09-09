@@ -78,6 +78,18 @@ decision and acceptance criteria (`kubectl create job --from=cronjob/frontdesk-d
 frontdesk-db-backup
 {{- end -}}
 
+{{/*
+Backup pods must NOT carry frontdesk.postgres.selectorLabels: the
+frontdesk-postgres Services select on those, so a backup pod would become
+a database endpoint (nothing listening on 5432 -> "connection refused"
+for every other client, including the backup itself). Found on #20's
+first acceptance run. Distinct component, same part-of for NetworkPolicy.
+*/}}
+{{- define "frontdesk.postgres.backupLabels" -}}
+{{ include "frontdesk.labels" . }}
+app.kubernetes.io/component: postgres-backup
+{{- end -}}
+
 {{- define "frontdesk.postgres.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "frontdesk.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
