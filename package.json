@@ -10,6 +10,7 @@
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
+    "seed": "pnpm --filter @frontdesk/db seed",
     "format": "prettier --check ."
   },
   "devDependencies": {
