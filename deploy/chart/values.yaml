@@ -57,13 +57,6 @@ ingress:
   host: frontdesk.jtrent.dev
   clusterIssuer: letsencrypt-prod
   tlsSecretName: frontdesk-tls
-  # Delivers REQUIREMENTS F1's per-IP rate limit at ingress (#17 deferred
-  # the numeric limit here; Cloudflare's rule is a coarser burst guard).
-  # Scoped to the whole host for now - a path-scoped second Ingress for
-  # /r/* and /api/* comes when those routes exist (#27).
-  annotations:
-    nginx.ingress.kubernetes.io/limit-rpm: "10"
-    nginx.ingress.kubernetes.io/limit-burst-multiplier: "2"
 
 # Public: safe in a ConfigMap. #27 (public form) is the first real
 # consumer; the ConfigMap ships now so the chart's env wiring is complete.

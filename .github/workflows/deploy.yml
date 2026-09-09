@@ -125,11 +125,13 @@ jobs:
 
       - name: Smoke test
         run: |
-          for i in $(seq 1 5); do
+          # 12 x 15s: the first deploy has to wait for cert-manager's
+          # DNS-01 issuance before the Ingress serves a working cert.
+          for i in $(seq 1 12); do
             if curl -fsS https://frontdesk.jtrent.dev/healthz; then
               exit 0
             fi
-            sleep 5
+            sleep 15
           done
-          echo "healthz did not return 200 after 5 attempts" >&2
+          echo "healthz did not return 200 after 12 attempts" >&2
           exit 1
