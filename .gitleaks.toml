@@ -1,0 +1,14 @@
+# Extends gitleaks' default ruleset; only adds a path allowlist below.
+[extend]
+useDefault = true
+
+[allowlist]
+# SealedSecret ciphertext is committed by design (deploy/chart/sealed/README.md,
+# #16): it's encrypted against the sealed-secrets controller's public key and
+# only decryptable in-cluster, so it isn't a secret leak. gitleaks otherwise
+# flags the base64 blobs as high-entropy strings.
+description = "Committed SealedSecret ciphertext (safe by design)"
+paths = [
+  '''deploy/chart/sealed/.*\.sealed\.yaml$''',
+  '''deploy/bootstrap/.*\.sealed\.yaml$''',
+]

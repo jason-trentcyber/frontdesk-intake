@@ -97,15 +97,14 @@ Two independent mechanisms (ADR-0016), not one:
    `local-path` directory to `~/backups/frontdesk-db/`:
 
    ```cron
-   0 4 * * * rsync -az --delete -e "ssh -i ~/.ssh/frontdesk-node" root@100.88.28.10:'/var/lib/rancher/k3s/storage/*_frontdesk_frontdesk-db-backups/' ~/backups/frontdesk-db/
+   0 4 * * * rsync -az -e "ssh -i ~/.ssh/frontdesk-node" root@100.88.28.10:'/var/lib/rancher/k3s/storage/*_frontdesk_frontdesk-db-backups/' ~/backups/frontdesk-db/ && find ~/backups/frontdesk-db -type f -mtime +14 -delete
    ```
 
-   `--delete` mirrors the source exactly rather than pruning
-   independently on the VPS side - the source itself already only ever
-   holds 14 days (the in-cluster CronJob's own prune), so the mirror
-   converges to the same window with no second pruning script to keep in
-   sync. `100.88.28.10` is the node's tailnet IP (ADR-0013); the glob
-   matches `local-path-provisioner`'s directory naming
+   No `--delete`: the VPS copy is append-only, so a bug or a bad prune on
+   the node's own CronJob can't reach back and delete the VPS's copies too
+   - the two sides are pruned independently, on purpose. `100.88.28.10` is
+   the node's tailnet IP (ADR-0013); the glob matches
+   `local-path-provisioner`'s directory naming
    (`<pvc-uid>_frontdesk_frontdesk-db-backups`).
 3. **Off-provider copy is manual**, like the Terraform state file
    (ADR-0012): add the newest dump to the `scp` block in

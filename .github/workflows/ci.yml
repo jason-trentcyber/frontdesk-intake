@@ -142,7 +142,7 @@ jobs:
       - name: Scan for secrets
         run: |
           gitleaks version
-          gitleaks detect --source . --redact --verbose
+          gitleaks detect --source . --config .gitleaks.toml --redact --verbose
 
   helm-lint:
     runs-on: ubuntu-latest
