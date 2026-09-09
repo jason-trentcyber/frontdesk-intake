@@ -1,6 +1,6 @@
 # ADR-0007: Two seeded orgs, org_id scoping in Prisma middleware plus Postgres RLS
 
-Status: decided 2026-09-07
+Status: decided 2026-09-07. The "Prisma middleware injects `where.org_id` … test asserts every tenant model" mechanism is superseded by ADR-0018 (Drizzle `forOrg()` scoped transaction + schema coverage test); the two-org model, `org_id` + FK, and RLS stand.
 
 ## Decision
 - Orgs: `bright-smile-dental` (public demo) and `harbor-legal` (private). Seeded by `pnpm seed`; all data fictional.
