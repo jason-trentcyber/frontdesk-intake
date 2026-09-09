@@ -1,6 +1,6 @@
 # ADR-0018: Tenancy data layer — Drizzle schema + RLS policies versioned together, `SECURITY DEFINER` entry-point resolvers, migrations from an in-cluster Job; amends ADR-0003 and ADR-0007
 
-Status: decided 2026-09-09. Supersedes the mechanism clauses "Prisma middleware injects `where.org_id`" (ADR-0007) and "via the Prisma adapter" (ADR-0003). Everything else in both ADRs stands: two seeded orgs, `org_id NOT NULL` + FK on every tenant table, RLS as the second layer, email allow-list membership, Auth.js with Google and GitHub, identities in our Postgres.
+Status: decided 2026-09-09; implementation tracked in #21 (the `db/` package, tests, CI job, migrate image and chart Job land in follow-up PRs, not this one). Supersedes the mechanism clauses "Prisma middleware injects `where.org_id`" (ADR-0007) and "via the Prisma adapter" (ADR-0003). Everything else in both ADRs stands: two seeded orgs, `org_id NOT NULL` + FK on every tenant table, RLS as the second layer, email allow-list membership, Auth.js with Google and GitHub, identities in our Postgres.
 
 ## Context
 
