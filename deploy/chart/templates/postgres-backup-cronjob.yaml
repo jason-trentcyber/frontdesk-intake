@@ -18,7 +18,7 @@ spec:
       template:
         metadata:
           labels:
-            {{- include "frontdesk.postgres.selectorLabels" . | nindent 12 }}
+            {{- include "frontdesk.postgres.backupLabels" . | nindent 12 }}
             {{- include "frontdesk.partOf" . | nindent 12 }}
         spec:
           automountServiceAccountToken: false
@@ -48,8 +48,16 @@ spec:
                 - |
                   set -euo pipefail
                   ts="$(date -u +%Y%m%dT%H%M%SZ)"
-                  pg_dumpall --globals-only > "/backups/frontdesk-${ts}.globals.sql"
-                  pg_dump -Fc frontdesk > "/backups/frontdesk-${ts}.dump"
+                  # Write to .tmp and mv on success: a failed dump must not
+                  # leave a 0-byte file that looks like a backup in `ls`.
+                  # Stale .tmp files from a killed run are pruned below.
+                  pg_dumpall --globals-only > "/backups/frontdesk-${ts}.globals.sql.tmp"
+                  pg_dump -Fc frontdesk > "/backups/frontdesk-${ts}.dump.tmp"
+                  test -s "/backups/frontdesk-${ts}.dump.tmp"
+                  mv "/backups/frontdesk-${ts}.globals.sql.tmp" "/backups/frontdesk-${ts}.globals.sql"
+                  mv "/backups/frontdesk-${ts}.dump.tmp" "/backups/frontdesk-${ts}.dump"
+                  ls -la "/backups/frontdesk-${ts}."*
+                  find /backups -maxdepth 1 -type f -name '*.tmp' -mmin +60 -delete
                   find /backups -maxdepth 1 -type f -mtime +{{ .Values.postgres.backups.retentionDays }} -delete
               volumeMounts:
                 - name: backups

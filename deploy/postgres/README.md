@@ -145,6 +145,26 @@ frontdesk_restore_test` first, then `pg_restore` **without** `--create`,
 targeting that name with `--dbname`) is what actually lands in a
 separate scratch database.
 
+### First-start failure leaves a half-initialised PGDATA
+
+The image's entrypoint runs `initdb`, then starts a temporary server to
+write `pg_hba.conf`, create the database, and run `initdb/*` (extensions,
+roles). If that temporary start fails (#20's first deploy: a config-file
+syntax error), PGDATA already exists, so every later start says "database
+directory appears to contain a database; skipping initialization" and boots
+an empty server: no `frontdesk` database, no roles, `pg_hba.conf` at its
+localhost-only default. Symptoms: `FATAL: database "frontdesk" does not
+exist` on exec, `no pg_hba.conf entry` from any other pod. Fix (human,
+admin kubeconfig — CI cannot delete PVCs, ADR-0016):
+
+```
+kubectl -n frontdesk delete pvc data-frontdesk-postgres-0 --wait=false
+kubectl -n frontdesk delete pod frontdesk-postgres-0
+```
+
+Only ever do this when the database has never been initialised correctly;
+with real data, restore from `/backups` instead.
+
 ### Restore drill log
 
 | Date | Dump file | Extensions verified | Row count matched | Notes |
