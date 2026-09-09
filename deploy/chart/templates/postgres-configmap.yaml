@@ -28,6 +28,8 @@ data:
   postgresql.conf: |
     listen_addresses = '*'
     {{- range $key, $value := .Values.postgres.config }}
-    {{ $key }} = {{ $value | quote }}
+    {{- /* squote, not quote: postgresql.conf string literals take single quotes;
+         double quotes are a syntax error (first deploy of #72: FATAL, CrashLoopBackOff). */}}
+    {{ $key }} = {{ $value | squote }}
     {{- end }}
 {{- end }}
