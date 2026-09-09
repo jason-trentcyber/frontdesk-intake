@@ -6,6 +6,7 @@ Rules every contributor (human or agent) follows. If a PR is rejected for the sa
 
 ```
 web/            Next.js app: landing, public form, tracking page, staff queue (Auth.js)
+db/             Drizzle schema + RLS policies, drizzle-kit migrations, resolvers, seeds; the frontdesk-db migrate image (ADR-0018)
 api/            Fastify service: request intake, org-scoped REST, queue producer
 worker/         Python: triage pipeline, ingestion, LLM + queue adapters
   llm/          LLMProvider interface + OpenRouter / Bedrock / Fake adapters. ONLY place a provider is named.
@@ -31,7 +32,7 @@ The owning ADR for each directory is listed in `CLAUDE.md`. Read it before editi
 
 ## Toolchain
 
-- Node 22+, pnpm workspace (`web/`, `api/`). Python 3.12 with `uv` (`worker/`, `evals/`).
+- Node 22+, pnpm workspace (`web/`, `api/`, `db/`). Python 3.12 with `uv` (`worker/`, `evals/`).
 - Local runtime: **Docker or Podman, your choice.** The repo never assumes one:
   - `compose.yaml` uses Compose v2 spec syntax only.
   - Makefile targets use `$(CONTAINER)`; default `docker`, override with `CONTAINER=podman`.
@@ -48,8 +49,9 @@ The owning ADR for each directory is listed in `CLAUDE.md`. Read it before editi
 ## Data and tenancy (ADR-0007)
 
 - Every tenant table has `org_id NOT NULL` + FK. No exceptions, no "global" convenience tables that later grow tenant data.
-- Queries go through the Prisma middleware that injects `org_id`. Raw SQL on tenant tables must include `org_id` in the predicate and set `app.org_id` for RLS.
-- Migrations are Prisma migrations, committed, forward-only. Never edit an applied migration.
+- Tenant reads and writes in `web/` and `api/` go through `forOrg(orgId, tx => …)` from `@frontdesk/db`, which sets `app.org_id` for the transaction; queries still carry `org_id` explicitly (belt and braces, ADR-0018). Raw SQL on tenant tables (the Python worker) must include `org_id` in the predicate and `set_config('app.org_id', …, true)` in the same transaction.
+- A new tenant table shows, in the same schema file: the `org_id` column + FK, `.enableRLS()`, and its `pgPolicy` comparing `org_id` to `current_org_id()`. The `db/` coverage test fails otherwise. A `SECURITY DEFINER` function or any policy that does not compare `org_id` to `current_org_id()` gets the `security` label and a human review.
+- Migrations are `drizzle-kit` migrations (generated or `--custom`), committed, forward-only, applied in production only by the `frontdesk-db-migrate` hook Job. Never edit an applied migration. Enum values are added in their own migration file.
 - Seed data is fictional and obviously so. No real names, addresses, phone numbers.
 
 ## Code style
