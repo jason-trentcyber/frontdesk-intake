@@ -2,21 +2,27 @@
 services:
   postgres:
     build:
-      context: ./deploy/local
-      dockerfile: postgres.Dockerfile
+      context: ./deploy/postgres
+      dockerfile: Dockerfile
     image: frontdesk/postgres-pgvector-pgmq:pg16
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-frontdesk}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-frontdesk}
+      # postgres is the superuser (ADR-0016); deploy/postgres/initdb/002-roles.sh
+      # creates the frontdesk (owner) and frontdesk_app (runtime) roles the
+      # app actually connects as.
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-frontdesk}
+      FRONTDESK_PASSWORD: ${FRONTDESK_PASSWORD:-frontdesk}
+      FRONTDESK_APP_PASSWORD: ${FRONTDESK_APP_PASSWORD:-frontdesk_app}
     ports:
       - "5432:5432"
     volumes:
+      # initdb/ is baked into the image (deploy/postgres/Dockerfile,
+      # ADR-0016), not bind-mounted - only the data volume is local state.
       - pgdata:/var/lib/postgresql/data
-      - ./deploy/local/initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-frontdesk} -d ${POSTGRES_DB:-frontdesk}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-frontdesk}"]
       interval: 5s
       timeout: 5s
       retries: 10

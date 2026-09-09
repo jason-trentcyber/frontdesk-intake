@@ -22,3 +22,15 @@ updates:
     groups:
       minor-patch:
         update-types: ["minor", "patch"]
+
+  # Tracks the pgvector/pgvector and ghcr.io/pgmq/pg16-pgmq base images via
+  # deploy/postgres/Dockerfile's PGVECTOR_VERSION/PGMQ_VERSION ARGs
+  # (ADR-0016). Base-image bumps still go through postgres-image.yml like
+  # any other change to deploy/postgres/ - Dependabot only opens the PR.
+  - package-ecosystem: "docker"
+    directory: "/deploy/postgres"
+    schedule:
+      interval: "weekly"
+    groups:
+      minor-patch:
+        update-types: ["minor", "patch"]
