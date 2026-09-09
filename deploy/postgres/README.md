@@ -167,6 +167,11 @@ with real data, restore from `/backups` instead.
 
 ### Restore drill log
 
+`deploy/postgres/restore-drill.sh` automates the scratch-DB restore above
+(latest dump, `pg_restore` into `frontdesk_restore_test`, extension and
+object-count comparison against `frontdesk`, drop). It never writes to
+`frontdesk`. Run it from the repo root on the VPS; append a row here.
+
 | Date | Dump file | Extensions verified | Row count matched | Notes |
 |---|---|---|---|---|
-| | | | | |
+| 2026-09-09 | `frontdesk-20260909T153908Z.dump` (52892 B) | `vector 0.8.6`, `pgmq 1.13.0` | 3 tables, 76 pgmq functions (schema only; no app rows yet) | First drill after #75 backup fix. `RESTORE DRILL OK 2026-09-09T16:00:03Z`. |
