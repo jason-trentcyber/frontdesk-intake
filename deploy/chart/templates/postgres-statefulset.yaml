@@ -74,6 +74,15 @@ spec:
               mountPath: /etc/postgresql/postgresql.conf
               subPath: postgresql.conf
               readOnly: true
+            {{- if .Values.postgres.backups.enabled }}
+            # The database pod is the backups PVC's first consumer. local-path
+            # is WaitForFirstConsumer: a PVC mounted only by a nightly CronJob
+            # stays Pending until 03:15, and `helm --wait` fails the release
+            # on an unbound PVC (first deploy of #72). Mounting it here also
+            # puts the dumps where the restore runbook runs pg_restore.
+            - name: backups
+              mountPath: /backups
+            {{- end }}
           readinessProbe:
             exec:
               command: ["pg_isready", "-U", "postgres"]
@@ -100,6 +109,11 @@ spec:
         - name: config
           configMap:
             name: {{ include "frontdesk.postgres.fullname" . }}-config
+        {{- if .Values.postgres.backups.enabled }}
+        - name: backups
+          persistentVolumeClaim:
+            claimName: {{ include "frontdesk.postgres.backupsFullname" . }}
+        {{- end }}
   volumeClaimTemplates:
     - metadata:
         name: data
