@@ -1,0 +1,14 @@
+# `helm upgrade --install -n frontdesk` (no --create-namespace) checks the
+# namespace exists before installing; that's a cluster-scoped read, so it
+# needs a ClusterRole even though everything else deployer can touch is
+# namespaced. Scoped to the single Namespace object by name - `get` is the
+# only verb resourceNames restricts meaningfully (list/watch ignore it).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: namespace-reader
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get"]
+    resourceNames: ["frontdesk"]

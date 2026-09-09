@@ -1,0 +1,23 @@
+# Documented EKS delta for *this application chart* (ADR-0001, ADR-0002).
+# Never applied in v1 - infra/aws/ is validate-only.
+#
+# This is distinct from the top-level ../values-eks.yaml, which is the
+# #16/#17 *bootstrap layer*'s EKS delta (the ingress-nginx controller's
+# own Service type -> LoadBalancer/NLB). ADR-0002 already decided EKS runs
+# the identical ingress-nginx controller "behind an NLB" - so this chart's
+# own Ingress resource needs no annotation or ingressClassName swap at all:
+# TLS still terminates at ingress-nginx via cert-manager, the rate-limit
+# annotation is still an ingress-nginx feature, and Cloudflare is still the
+# DNS-01 provider regardless of which cluster is running. Nothing to
+# override here for `web` yet.
+
+# Placeholder for the first component that needs a PersistentVolumeClaim
+# (Postgres, #20) - gp3 is EKS's general-purpose SSD storage class.
+storageClassName: gp3
+
+# Placeholder for the first component that needs AWS API access directly
+# (QUEUE_PROVIDER=sqs, #22) via IRSA rather than a static credential:
+# web:
+#   serviceAccount:
+#     annotations:
+#       eks.amazonaws.com/role-arn: "arn:aws:iam::<account-id>:role/<role-name>"

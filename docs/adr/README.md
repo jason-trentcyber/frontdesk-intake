@@ -18,3 +18,4 @@ Format: context, decision, consequences, alternatives rejected. One file per dec
 | 0012 | Terraform state stays local with an off-host copy; no remote backend yet | decided |
 | 0013 | Admin access to the node over the tailnet; VPS IP kept as break-glass on 22/6443 | decided, applied |
 | 0014 | CI deploys over the tailnet (OAuth client, tag:ci); namespace-scoped SA kubeconfig; GHCR by digest; push not pull | decided |
+| 0015 | App-chart values overlays live at `deploy/chart/values-*.yaml`; full RBAC surface for the ADR-0014 deployer Role | decided |

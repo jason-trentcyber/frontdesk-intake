@@ -131,6 +131,75 @@ Idempotent — re-running only applies what changed. Requires `helm` and
 `kubectl` (both already on the Hermes VPS) and a kubeconfig pointed at the
 cluster.
 
+## RBAC for CI deploys (`#18`, ADR-0014)
+
+`rbac/` is namespace + RBAC only — the `frontdesk` application namespace
+that `deploy/chart/` installs into, and the least-privilege identity
+GitHub Actions uses to deploy it. Applied **once**, by a human, with the
+admin kubeconfig:
+
+```
+make bootstrap-rbac   # KUBECONFIG=infra/hetzner/kubeconfig kubectl apply -f deploy/bootstrap/rbac/
+```
+
+Contents: Namespace `frontdesk` (Pod Security Admission `enforce:
+restricted`), ServiceAccount `deployer`, a `Role` scoped to exactly what
+`helm upgrade --install --wait` touches (Deployments, Services, Ingresses,
+ConfigMaps, Secrets, ServiceAccounts, NetworkPolicies, SealedSecrets, and
+read-only Pods), and a `ClusterRole` granting `get` on the single
+`frontdesk` Namespace object (Helm checks the namespace exists before
+installing, since `deploy.yml` never passes `--create-namespace`). No
+cluster-admin, nothing cross-namespace — see ADR-0014's rejected
+alternatives for why.
+
+**Minting the Actions secret**, after `make bootstrap-rbac`:
+
+```
+kubectl create token deployer -n frontdesk --duration=8760h > /tmp/deployer.token
+```
+
+Build a kubeconfig around that token pointed at the **tailnet** IP (not
+the floating IP — `deploy.yml`'s runner joins the tailnet for the
+duration of the run, ADR-0014), then base64 it and set the secret:
+
+```
+TOKEN=$(cat /tmp/deployer.token)
+CA=$(kubectl config view --raw --minify --flatten -o jsonpath='{.clusters[0].cluster.certificate-authority-data}')
+cat > /tmp/deployer.kubeconfig <<EOF
+apiVersion: v1
+kind: Config
+clusters:
+  - name: frontdesk-node
+    cluster:
+      server: https://100.88.28.10:6443
+      certificate-authority-data: ${CA}
+contexts:
+  - name: deployer
+    context:
+      cluster: frontdesk-node
+      namespace: frontdesk
+      user: deployer
+current-context: deployer
+users:
+  - name: deployer
+    user:
+      token: ${TOKEN}
+EOF
+base64 -w0 /tmp/deployer.kubeconfig | gh secret set KUBECONFIG_B64
+shred -u /tmp/deployer.token /tmp/deployer.kubeconfig
+```
+
+Rotate yearly (the token's `--duration`) or immediately on any suspicion
+of leak — minting a fresh token and re-running `gh secret set` is the
+entire rotation procedure; nothing else references the old one.
+
+**Negative test** (confirms the token is namespace-scoped, not admin):
+
+```
+kubectl --kubeconfig /tmp/deployer.kubeconfig get pods -n kube-system   # Forbidden
+kubectl --kubeconfig /tmp/deployer.kubeconfig get pods -n frontdesk     # allowed (empty until the first deploy)
+```
+
 ## Acceptance (paste real output into the PR)
 
 ```

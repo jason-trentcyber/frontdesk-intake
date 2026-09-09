@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "frontdesk.web.fullname" . }}
+  labels:
+    {{- include "frontdesk.web.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.web.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "frontdesk.web.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "frontdesk.web.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "frontdesk.web.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.web.serviceAccount.automountServiceAccountToken }}
+      securityContext:
+        {{- toYaml .Values.web.podSecurityContext | nindent 8 }}
+      containers:
+        - name: web
+          image: {{ include "frontdesk.web.image" . }}
+          imagePullPolicy: {{ .Values.web.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.web.containerSecurityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.web.service.targetPort }}
+              protocol: TCP
+          env:
+            - name: PORT
+              value: {{ .Values.web.service.targetPort | quote }}
+            - name: TURNSTILE_SITE_KEY
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "frontdesk.web.fullname" . }}
+                  key: TURNSTILE_SITE_KEY
+            - name: TURNSTILE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.turnstile.secretName }}
+                  key: {{ .Values.turnstile.secretKey }}
+                  # Not sealed until a human seals it for this namespace
+                  # (README.md -> Secrets); #27 is the first real consumer.
+                  # Optional so this Deployment isn't blocked on that.
+                  optional: true
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.web.resources | nindent 12 }}

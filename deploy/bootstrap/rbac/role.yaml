@@ -1,0 +1,36 @@
+# Exactly what `helm upgrade --install deploy/chart -n frontdesk --wait`
+# needs, and nothing else (ADR-0014: no cluster-admin, no cross-namespace).
+# Namespaced to `frontdesk` - this Role grants nothing outside it.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: deployer
+  namespace: frontdesk
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["apps"]
+    # Read-only: `--wait` checks Deployment rollout status via its
+    # ReplicaSet, not just the Deployment object itself.
+    resources: ["replicasets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["services", "configmaps", "serviceaccounts"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    # Covers both app secrets (e.g. sealed-secrets' decrypted output) and
+    # Helm's own release-state storage (Secrets of type helm.sh/release.v1).
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    # Read-only: `--wait` polls Pod readiness; Helm never creates Pods
+    # directly (the Deployment controller does).
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses", "networkpolicies"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["bitnami.com"]
+    resources: ["sealedsecrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]

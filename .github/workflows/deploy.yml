@@ -1,0 +1,137 @@
+name: deploy
+
+# Triggered by ci.yml's completion, not `push` directly (ADR-0014 /
+# REQUIREMENTS N5: deploy only after CI is green, on the same commit).
+# `workflow_run` fires for every completed run of "ci" regardless of
+# branch or outcome; the `if` guards below are what actually restrict
+# this to a successful run on `main`.
+on:
+  workflow_run:
+    workflows: ["ci"]
+    types: [completed]
+
+concurrency:
+  group: deploy-prod
+  # Never cancel a deploy in flight - two merges racing must queue, not
+  # leave a Helm release half-applied.
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/jason-trentcyber/frontdesk-web
+
+jobs:
+  build:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+      skip: ${{ steps.changes.outputs.skip }}
+      short_sha: ${{ steps.vars.outputs.short_sha }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 2
+
+      # workflow_run has no path filter of its own (unlike push/pull_request);
+      # this is the docs-only skip the brief describes.
+      - name: Check for deploy-relevant changes
+        id: changes
+        run: |
+          changed="$(git diff --name-only HEAD^ HEAD)"
+          echo "$changed"
+          if echo "$changed" | grep -vqE '^(docs/|README\.md$|CLAUDE\.md$|AGENTS\.md$|REQUIREMENTS\.md$|LICENSE$)'; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Only docs changed; skipping build+deploy."
+          fi
+
+      - name: Compute short SHA
+        id: vars
+        if: steps.changes.outputs.skip != 'true'
+        run: echo "short_sha=$(echo '${{ github.event.workflow_run.head_sha }}' | cut -c1-7)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Buildx
+        if: steps.changes.outputs.skip != 'true'
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      - name: Log in to GHCR
+        if: steps.changes.outputs.skip != 'true'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        if: steps.changes.outputs.skip != 'true'
+        id: build
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: web/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:sha-${{ steps.vars.outputs.short_sha }}
+            ${{ env.IMAGE }}:latest
+
+  deploy:
+    needs: build
+    if: needs.build.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      # Kubernetes API (6443) is reachable from exactly two places since
+      # ADR-0013: the Hermes VPS and the tailnet. This runner is neither
+      # until it joins here - ephemeral, tag:ci, gone when the job ends.
+      - name: Join tailnet
+        uses: tailscale/github-action@780049a30b6ff5c378a9e7b389d15ece7a204888 # v4.1.3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Set up Helm
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+
+      - name: Write kubeconfig
+        run: |
+          umask 077
+          echo "${{ secrets.KUBECONFIG_B64 }}" | base64 -d > "$RUNNER_TEMP/kubeconfig"
+          echo "KUBECONFIG=$RUNNER_TEMP/kubeconfig" >> "$GITHUB_ENV"
+
+      - name: Deploy
+        run: |
+          helm upgrade --install frontdesk deploy/chart \
+            -n frontdesk \
+            -f deploy/chart/values-hetzner.yaml \
+            --set web.image.digest=${{ needs.build.outputs.digest }} \
+            --wait --timeout 5m --history-max 5
+
+      - name: Smoke test
+        run: |
+          # 12 x 15s: the first deploy has to wait for cert-manager's
+          # DNS-01 issuance before the Ingress serves a working cert.
+          for i in $(seq 1 12); do
+            if curl -fsS https://frontdesk.jtrent.dev/healthz; then
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "healthz did not return 200 after 12 attempts" >&2
+          exit 1

@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "frontdesk.web.fullname" . }}
+  labels:
+    {{- include "frontdesk.web.labels" . | nindent 4 }}
+data:
+  TURNSTILE_SITE_KEY: {{ .Values.turnstile.siteKey | quote }}
