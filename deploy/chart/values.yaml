@@ -23,6 +23,12 @@ web:
 
   podSecurityContext:
     runAsNonRoot: true
+    # Pinned to match the image's numeric USER (web/Dockerfile) so the
+    # chart enforces the non-root UID/GID regardless of what the image
+    # does - runAsNonRoot alone can't verify a named image USER statically
+    # and fails the pod with CreateContainerConfigError (#18 postmortem).
+    runAsUser: 1001
+    runAsGroup: 1001
     seccompProfile:
       type: RuntimeDefault
 

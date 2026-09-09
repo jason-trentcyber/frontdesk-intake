@@ -38,7 +38,10 @@ RUN addgroup --system --gid 1001 nodejs \
 COPY --from=builder --chown=nextjs:nodejs /repo/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /repo/web/.next/static ./web/.next/static
 
-USER nextjs
+# Numeric, not the name "nextjs": kubelet can't statically resolve a named
+# user against runAsNonRoot (deploy/chart/values.yaml sets runAsUser: 1001),
+# and fails the pod with CreateContainerConfigError before it ever starts.
+USER 1001:1001
 EXPOSE 3000
 
 CMD ["node", "web/server.js"]
