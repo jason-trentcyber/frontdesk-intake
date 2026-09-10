@@ -12,11 +12,22 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
+    // Next 16 requires react-jsx (the React automatic runtime) and
+    // rewrites this key on `next build` if it says "preserve" - committing
+    // what it wants so the build is not a source of uncommitted drift.
+    "jsx": "react-jsx",
     "incremental": true,
     "noEmit": true,
     "plugins": [{ "name": "next" }]
   },
-  "include": ["next-env.d.ts", "src", "*.config.ts", ".next/types/**/*.ts"],
+  // .next/dev/types is new in Next 16 and is added by `next build` for the
+  // same reason as above.
+  "include": [
+    "next-env.d.ts",
+    "src",
+    "*.config.ts",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
   "exclude": ["node_modules"]
 }
