@@ -123,8 +123,18 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
+      # Pinned, not floating (ADR-0020). The action is SHA-pinned but its
+      # default installs whatever is latest at run time: two deploys 28
+      # minutes apart on 2026-09-10 used v4.3.0 and v4.2.4. Helm is the
+      # tool that talks to the cluster and its behaviour decides which
+      # RBAC verbs the deployer Role needs (Helm 4 applies hooks with
+      # server-side apply -> `patch`), so it gets the same treatment as
+      # every image digest and action SHA in this repo. Bumping it is a
+      # deliberate PR.
       - name: Set up Helm
         uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: v4.3.0
 
       - name: Write kubeconfig
         run: |

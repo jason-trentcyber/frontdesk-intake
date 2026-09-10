@@ -19,7 +19,8 @@ Format: context, decision, consequences, alternatives rejected. One file per dec
 | 0013 | Admin access to the node over the tailnet; VPS IP kept as break-glass on 22/6443 | decided, applied |
 | 0014 | CI deploys over the tailnet (OAuth client, tag:ci); namespace-scoped SA kubeconfig; GHCR by digest; push not pull | decided |
 | 0015 | App-chart values overlays live at `deploy/chart/values-*.yaml`; full RBAC surface for the ADR-0014 deployer Role | decided; RBAC list extended by 0016 |
-| 0016 | Postgres: StatefulSet in the app chart, one pgvector+pgmq image for local and prod, nightly `pg_dump` to a PVC pulled to the VPS; no operator, no bucket | decided; consumer-secrets and config-include clauses superseded by 0017 |
+| 0016 | Postgres: StatefulSet in the app chart, one pgvector+pgmq image for local and prod, nightly `pg_dump` to a PVC pulled to the VPS; no operator, no bucket | decided; consumer-secrets and config-include clauses superseded by 0017, `batch/jobs` verb list by 0020 |
 | 0017 | Consumer credentials = ConfigMap + per-audience `secretKeyRef`; Postgres config as full `config_file`; amends 0016 | decided |
 | 0018 | Tenancy data layer: Drizzle schema with RLS policies versioned together, `SECURITY DEFINER` entry-point resolvers, migrations via in-cluster `frontdesk-db-migrate` Job; amends 0003 and 0007 | decided; hook-phase clause superseded by 0019 |
 | 0019 | `frontdesk-db-migrate` runs `post-install,pre-upgrade` (a `pre-install` hook deadlocks against the Postgres StatefulSet it needs); amends 0018 | decided |
+| 0020 | deployer Role needs `patch` on `batch/jobs` (Helm 4 applies hooks server-side); Helm version pinned in CI; amends 0016 | decided, applied |
