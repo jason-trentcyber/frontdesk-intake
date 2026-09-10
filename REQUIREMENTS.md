@@ -8,7 +8,7 @@ Owner: Jason Trent. Build partners: Claude Code (IDE), Hermes (VPS: board, subag
 frontdesk is an AI-assisted request desk for small businesses. Customers submit requests through a public form; the system classifies each request, routes it to a lane, and drafts a reply grounded in the business's own documents. Staff review the draft, then approve, edit, or reject it.
 
 Two purposes, one codebase:
-1. Portfolio deliverable for the Slalom Senior Software Architect, AI Accelerated Engineering role (job 3471). The engineering PROCESS is a first-class deliverable, visible in the public repo.
+1. A public reference implementation of an AI-first SDLC: agents and humans working the same repo, with guardrails from ideation through operations. The engineering PROCESS is a first-class deliverable, visible in the public repo.
 2. First product of the Trent Cyber Advisory AI-assistant service line for SMBs.
 
 Repo: `github.com/jason-trentcyber/frontdesk-intake`, Apache-2.0, public.
@@ -21,13 +21,13 @@ Site: `https://frontdesk.jtrent.dev`.
 | Requester (customer of an org) | none | submit a request on `/r/<org-slug>`, view its status on `/t/<token>` |
 | Staff (employee of an org) | OAuth (Google, GitHub), allow-listed to one org | see the org queue, read drafts and citations, approve / edit / reject |
 | Owner | as staff | plus upload and remove documents, manage the staff allow-list |
-| Visitor (recruiter, anyone) | none | landing page, read-only view of the demo org's queue, submit a request to the demo org |
+| Visitor (anyone, not signed in) | none | landing page, read-only view of the demo org's queue, submit a request to the demo org |
 
 ## 3. Tenancy
 
 - Two seeded orgs: `bright-smile-dental` (dental practice, public demo) and `harbor-legal` (small law office, private). Different documents, different lanes, so isolation is demonstrable.
 - No self-serve org creation in v1. Staff accounts are mapped to an org by an allow-list in the database, edited by the owner or by seed.
-- Every tenant-scoped table carries `org_id`. The API enforces scoping in a single Prisma middleware; no query path bypasses it. Postgres row-level security is enabled on tenant tables as a second layer.
+- Every tenant-scoped table carries `org_id`. Scoping is enforced in one place in the data-access layer, and Postgres row-level security is enabled on tenant tables as a second layer that no query path can bypass. (The original wording named Prisma middleware as the mechanism; ADR-0018 replaced it with Drizzle plus `forOrg()` and a schema coverage test.)
 - Per-org daily LLM budget (tokens), configurable; exceeding it queues requests without drafting and raises an alert.
 
 ## 4. Functional requirements
