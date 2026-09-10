@@ -67,6 +67,8 @@ with. pgmq needs no equivalent.
 
 ### Queue provisioning: `frontdesk_app` at startup, not a migration
 
+> Decided in [ADR-0022](../docs/adr/0022-queue-provisioning.md). The summary below is the operational detail; the ADR carries the decision, the alternatives, and the consequences.
+
 The #22 brief called for `db/drizzle/0005_pgmq_queue.sql` - a migration
 run as `frontdesk` (the owner role, via `frontdesk-db-migrate`) calling
 `pgmq.create('frontdesk_triage')`. **That is impossible**, verified

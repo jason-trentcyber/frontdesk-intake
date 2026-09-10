@@ -8,7 +8,11 @@ import {
 import type { Queue, QueueMessage } from "./index.js";
 
 // AGENTS.md's openrouter/bedrock/boto3 rule, same principle: this is the
-// only file that may import @aws-sdk/*.
+// only PRODUCTION file that may import @aws-sdk/*. queue.contract.test.ts
+// also imports it, to create and drop the LocalStack queues its fixture
+// runs against - that is test scaffolding standing in for infrastructure
+// (Terraform owns real SQS queues), not the service reaching for a vendor
+// SDK behind the Queue interface.
 
 export interface SqsQueueConfig {
   queueUrl: string;

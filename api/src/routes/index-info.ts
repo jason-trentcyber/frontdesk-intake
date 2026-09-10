@@ -33,9 +33,19 @@ export function registerIndexInfoRoute(app: FastifyInstance, db: Db): void {
       return sendProblem(reply, 404, "Not Found", `no such org: ${slug}`);
     }
 
-    const counts = await forOrg(db, org.id, async (tx) => {
-      const [documentCount] = await tx.select({ value: count() }).from(documents);
-      const [chunkCount] = await tx.select({ value: count() }).from(chunks);
+    // AGENTS.md: "Every query on a tenant table includes org_id. No
+    // exceptions (ADR-0007)." RLS would scope these counts on its own,
+    // but the rule is belt and braces (ADR-0018) - forOrg hands orgId
+    // back precisely so the filter is visible in the query.
+    const counts = await forOrg(db, org.id, async (tx, orgId) => {
+      const [documentCount] = await tx
+        .select({ value: count() })
+        .from(documents)
+        .where(eq(documents.orgId, orgId));
+      const [chunkCount] = await tx
+        .select({ value: count() })
+        .from(chunks)
+        .where(eq(chunks.orgId, orgId));
       return {
         documentCount: documentCount?.value ?? 0,
         chunkCount: chunkCount?.value ?? 0,

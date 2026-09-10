@@ -5,6 +5,10 @@ import { QUEUE_NAME } from "./index.js";
 /**
  * Creates the triage queue if it does not exist, at startup.
  *
+ * Decided in ADR-0022 (docs/adr/0022-queue-provisioning.md), which amends
+ * ADR-0004 and ADR-0018. Rationale below is kept because it is the sort of
+ * thing a reader hits here first.
+ *
  * The brief for #22 said to provision this from a `db/` migration running
  * as the `frontdesk` owner role. That is impossible: `frontdesk` has no
  * privileges at all on schema `pgmq` (`permission denied for schema pgmq`
