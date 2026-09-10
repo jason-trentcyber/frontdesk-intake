@@ -136,6 +136,28 @@ postgres:
   service:
     port: 5432
 
+# The migrate Job (ADR-0018, ADR-0019): a post-install,pre-upgrade Helm
+# hook that runs @frontdesk/db's migrations then seed against the
+# postgres StatefulSet above. Digest pinned by deploy.yml alongside
+# web.image; `tag` is the same lint/template-only fallback web.image uses.
+db:
+  image:
+    repository: ghcr.io/jason-trentcyber/frontdesk-db
+    digest: ""
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+  migrate:
+    # values-eks.yaml turns this off: postgres.enabled: false there means
+    # frontdesk-postgres-connection never renders, so the Job would have
+    # no host to read (see that file's comment).
+    enabled: true
+
+  seed:
+    # A real address never enters the repo (ADR-0018 Seeds) - db/seed.ts
+    # derives both orgs' owner emails from this one via plus-addressing.
+    ownerEmail: "owner@example.com"
+
 ingress:
   enabled: true
   className: nginx

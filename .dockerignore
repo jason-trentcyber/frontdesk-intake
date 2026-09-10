@@ -1,9 +1,9 @@
-# Build context is the repo root (web/Dockerfile builds a pnpm workspace
-# member). Without this, a local `docker build` run after `pnpm install`
-# would let `COPY web ./web` clobber the deps-stage's web/node_modules
-# with the host's own (wrong platform/libc) copy - CI never hits this
-# since actions/checkout starts from a clean tree, but local builds
-# should behave the same way.
+# Build context is the repo root (web/Dockerfile and db/Dockerfile both
+# build a single pnpm workspace member from here). Without this, a local
+# `docker build` run after `pnpm install` would let e.g. `COPY web ./web`
+# clobber the deps-stage's web/node_modules with the host's own (wrong
+# platform/libc) copy - CI never hits this since actions/checkout starts
+# from a clean tree, but local builds should behave the same way.
 **/node_modules
 **/.next
 **/.turbo
