@@ -4,7 +4,7 @@ import { loadEnv } from "./env.js";
 // loadEnv() decides which database role api/ connects as. Getting the
 // fallback backwards would silently run the service as the owner role,
 // which RLS does not constrain (ADR-0018) - worth pinning.
-const base = { QUEUE_PROVIDER: "pgmq" as const };
+const base = { QUEUE_PROVIDER: "pgmq" as const, PUBLIC_WEB_ORIGIN: "https://example.test" };
 
 describe("loadEnv", () => {
   it("prefers DATABASE_APP_URL over DATABASE_URL", () => {
@@ -19,6 +19,12 @@ describe("loadEnv", () => {
   it("falls back to DATABASE_URL in the cluster, where DATABASE_APP_URL has no counterpart", () => {
     expect(loadEnv({ ...base, DATABASE_URL: "postgresql://app@h/db" }).databaseUrl).toBe(
       "postgresql://app@h/db",
+    );
+  });
+
+  it("requires PUBLIC_WEB_ORIGIN - no hardcoded production default", () => {
+    expect(() => loadEnv({ QUEUE_PROVIDER: "pgmq", DATABASE_URL: "x" })).toThrow(
+      /Invalid environment/,
     );
   });
 
@@ -42,6 +48,7 @@ describe("loadEnv", () => {
     (missing) => {
       const sqs: Record<string, string> = {
         QUEUE_PROVIDER: "sqs",
+        PUBLIC_WEB_ORIGIN: "https://example.test",
         DATABASE_URL: "x",
         AWS_REGION: "us-east-1",
         SQS_QUEUE_URL: "https://sqs/main",
@@ -55,6 +62,7 @@ describe("loadEnv", () => {
   it("accepts a complete sqs config", () => {
     const env = loadEnv({
       QUEUE_PROVIDER: "sqs",
+      PUBLIC_WEB_ORIGIN: "https://example.test",
       DATABASE_URL: "x",
       AWS_REGION: "us-east-1",
       SQS_QUEUE_URL: "https://sqs/main",

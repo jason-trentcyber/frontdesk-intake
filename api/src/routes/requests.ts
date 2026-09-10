@@ -5,7 +5,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { hashApiKey } from "../api-key.js";
 import { sendProblem } from "../problem.js";
-import type { Queue, TriageMessage } from "../queue/index.js";
+import { assertTriageMessage, type Queue, type TriageMessage } from "../queue/index.js";
 import type { TurnstileVerifier } from "../turnstile.js";
 
 const bodySchema = z.object({
@@ -38,7 +38,8 @@ export function registerRequestsRoute(app: FastifyInstance, deps: RequestsRouteD
     // Exactly one auth mode per request (F1 Turnstile, F3 API key); both
     // present or neither -> 400.
     const authHeader = req.headers.authorization;
-    const hasApiKey = typeof authHeader === "string" && authHeader.startsWith("Bearer ") && authHeader.length > 7;
+    const hasApiKey =
+      typeof authHeader === "string" && authHeader.startsWith("Bearer ") && authHeader.length > 7;
     const rawBody = (req.body ?? {}) as Record<string, unknown>;
     const turnstileToken = rawBody["cf-turnstile-response"];
     const hasTurnstile = typeof turnstileToken === "string" && turnstileToken.length > 0;
@@ -114,7 +115,11 @@ export function registerRequestsRoute(app: FastifyInstance, deps: RequestsRouteD
     // rolled-back insert must not leave a queued message pointing at a
     // request row that was never actually created (brief, judgment call
     // in the PR body).
-    await queue.send({ orgId, requestId });
+    const message: TriageMessage = { orgId, requestId };
+    // The queue has no RLS (see queue/index.ts): an unscoped message would
+    // be accepted silently. Fail here instead, before it is durable.
+    assertTriageMessage(message);
+    await queue.send(message);
 
     return reply.code(201).send({
       trackingToken,

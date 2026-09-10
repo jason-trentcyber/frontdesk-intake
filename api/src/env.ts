@@ -20,9 +20,13 @@ const rawEnvSchema = z.object({
   // in the cluster (secretKeyRef on the turnstile SealedSecret).
   TURNSTILE_SECRET_KEY: z.string().optional(),
   // Not in the brief; needed to build an absolute trackingUrl a
-  // third-party integration can hand to its own users (CLAUDE.md's
-  // "Site: https://frontdesk.jtrent.dev").
-  PUBLIC_WEB_ORIGIN: z.string().default("https://frontdesk.jtrent.dev"),
+  // third-party integration can hand to its own users. Required, with no
+  // default: a default is necessarily one environment's hostname, so any
+  // other environment that forgot to set it would mint tracking URLs
+  // pointing at production and only find out when a user followed one.
+  // The chart derives it from ingress.host, so it cannot drift from the
+  // Ingress that actually serves those URLs; .env.example sets localhost.
+  PUBLIC_WEB_ORIGIN: z.string().min(1),
   // SQS adapter only.
   AWS_ENDPOINT_URL: z.string().optional(),
   AWS_REGION: z.string().optional(),

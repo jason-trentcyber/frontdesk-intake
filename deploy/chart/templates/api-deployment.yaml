@@ -34,6 +34,11 @@ spec:
               value: {{ .Values.api.service.targetPort | quote }}
             - name: QUEUE_PROVIDER
               value: {{ .Values.api.queueProvider | quote }}
+            # Derived from the Ingress that actually serves these URLs, so
+            # a tracking link can never point at a different environment's
+            # host. api/ requires this - there is no default in code.
+            - name: PUBLIC_WEB_ORIGIN
+              value: {{ printf "https://%s" .Values.ingress.host | quote }}
             # ADR-0017's env pattern, exactly - api/ references APP_PGUSER
             # + frontdesk-app-password only. It must never reference
             # frontdesk-password; that key is frontdesk-db-migrate's alone

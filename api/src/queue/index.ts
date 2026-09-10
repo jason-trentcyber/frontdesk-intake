@@ -33,4 +33,20 @@ export interface TriageMessage {
   requestId: string;
 }
 
+// The type above is erased at runtime, and the queue has no RLS to catch a
+// mistake - so an unscoped message would be accepted silently and only
+// surface as a worker crash or, worse, a request triaged under the wrong
+// org. Assert at the boundary instead. Producers call this before send();
+// consumers call it on receive(), because a message written by an older
+// build is just as unscoped as one written by a buggy new one.
+export function assertTriageMessage(value: unknown): asserts value is TriageMessage {
+  const m = value as Partial<TriageMessage> | null;
+  if (!m || typeof m.orgId !== "string" || m.orgId.length === 0) {
+    throw new Error("TriageMessage.orgId is required - the queue has no RLS to enforce tenancy");
+  }
+  if (typeof m.requestId !== "string" || m.requestId.length === 0) {
+    throw new Error("TriageMessage.requestId is required");
+  }
+}
+
 export const QUEUE_NAME = "frontdesk_triage";
