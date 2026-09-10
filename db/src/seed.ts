@@ -231,7 +231,7 @@ async function upsertDocuments(db: Db, orgId: string, orgSlug: string): Promise<
   return created;
 }
 
-async function upsertDemoRequests(db: Db, orgId: string): Promise<number> {
+async function upsertDemoRequests(db: Db, orgId: string, org: OrgSeed): Promise<number> {
   let created = 0;
   for (const seed of DEMO_REQUESTS) {
     const inserted = await db
@@ -248,7 +248,7 @@ async function upsertDemoRequests(db: Db, orgId: string): Promise<number> {
         category: seed.category,
         urgency: seed.urgency,
         summary: seed.summary,
-        lane: ORGS[0]!.settings.lanes[seed.category],
+        lane: org.settings.lanes[seed.category],
         replyText: seed.approved ? seed.draftBody : null,
         resolvedAt: seed.approved ? new Date() : null,
       })
@@ -280,7 +280,7 @@ async function upsertDemoRequests(db: Db, orgId: string): Promise<number> {
       await db.insert(schema.actions).values({
         orgId,
         requestId: request.id,
-        actorEmail: ownerEmailFor(ORGS[0]!.slug),
+        actorEmail: ownerEmailFor(org.slug),
         kind: "approve",
         before: { status: "drafted" },
         after: { status: "approved" },
@@ -310,7 +310,7 @@ export async function seedDatabase(db: Db): Promise<SeedCounts> {
     counts.documents += await upsertDocuments(db, orgId, org.slug);
 
     if (org.isDemo) {
-      counts.requests += await upsertDemoRequests(db, orgId);
+      counts.requests += await upsertDemoRequests(db, orgId, org);
     }
   }
 
