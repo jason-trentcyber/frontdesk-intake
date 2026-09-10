@@ -24,3 +24,4 @@ Format: context, decision, consequences, alternatives rejected. One file per dec
 | 0018 | Tenancy data layer: Drizzle schema with RLS policies versioned together, `SECURITY DEFINER` entry-point resolvers, migrations via in-cluster `frontdesk-db-migrate` Job; amends 0003 and 0007 | decided; hook-phase clause superseded by 0019 |
 | 0019 | `frontdesk-db-migrate` runs `post-install,pre-upgrade` (a `pre-install` hook deadlocks against the Postgres StatefulSet it needs); amends 0018 | decided |
 | 0020 | deployer Role needs `patch` on `batch/jobs` (Helm 4 applies hooks server-side); Helm version pinned in CI; amends 0016 | decided, applied |
+| 0021 | `web/` uses `@frontdesk/db` in-process; `api/` serves external integrations (F3) and owns the queue producer | decided |
