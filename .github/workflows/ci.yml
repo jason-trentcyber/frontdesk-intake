@@ -159,6 +159,98 @@ jobs:
       - name: Check for schema drift
         run: pnpm --filter @frontdesk/db check
 
+  # api/'s tests need real backing services, so they run here rather than
+  # in `node` (which has none and would silently skip them). ADR-0004 is
+  # explicit: "CI runs the same contract tests against pgmq (Postgres
+  # service container) and SQS (LocalStack service container)" - both are
+  # below, and a green `node` job is not evidence either adapter works.
+  # Same Postgres image and migrate/seed steps as `db` above: the intake
+  # tests resolve real seeded orgs.
+  api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: ghcr.io/jason-trentcyber/frontdesk-postgres@sha256:6b99f66e5de740b1e5cff5726a85e8d06e63d4100bcbdacd74378b22bdb19f83
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: frontdesk
+          # Throwaway CI values, plain strings - not secrets.
+          FRONTDESK_PASSWORD: frontdesk
+          FRONTDESK_APP_PASSWORD: frontdesk_app
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d frontdesk"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      # Pinned 4.14.0, not latest: 2026.x requires a LOCALSTACK_AUTH_TOKEN
+      # and exits without one (same pin and reason as compose.yaml).
+      # SQS only - ADR-0004 rejects LocalStack as anything but a test
+      # double for the second adapter.
+      localstack:
+        image: localstack/localstack:4.14.0
+        env:
+          SERVICES: sqs
+        ports:
+          - 4566:4566
+        options: >-
+          --health-cmd "curl -f http://localhost:4566/_localstack/health"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://frontdesk:***@localhost:5432/frontdesk
+      DATABASE_APP_URL: postgresql://frontdesk_app:***@localhost:5432/frontdesk
+      MIGRATE_DATABASE_URL: postgresql://frontdesk:***@localhost:5432/frontdesk
+      SEED_OWNER_EMAIL: owner@example.com
+      AWS_ENDPOINT_URL: http://localhost:4566
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: |
+          pnpm --version
+          pnpm install --frozen-lockfile
+
+      - name: Migrate
+        run: pnpm --filter @frontdesk/db migrate
+
+      - name: Seed
+        run: pnpm seed
+
+      - name: Test
+        run: pnpm --filter @frontdesk/api test
+
+      # A skipped test is not a passing test. Every api/ test file gates
+      # itself on env (DATABASE_APP_URL, AWS_ENDPOINT_URL) so it can run
+      # on a laptop without services; that same guard would let the whole
+      # suite silently skip here if a service or env var went missing, and
+      # the job would still be green. Assert the count instead.
+      - name: Assert no tests were skipped
+        run: |
+          pnpm --filter @frontdesk/api exec vitest run --reporter=json --outputFile=/tmp/api-tests.json
+          skipped=$(node -e "const r=require('/tmp/api-tests.json');console.log(r.numPendingTests+r.numTodoTests)")
+          echo "skipped=$skipped"
+          if [ "$skipped" != "0" ]; then
+            echo "::error::$skipped api/ test(s) skipped - a service container or env var is missing" >&2
+            exit 1
+          fi
+
   python:
     runs-on: ubuntu-latest
     defaults:
