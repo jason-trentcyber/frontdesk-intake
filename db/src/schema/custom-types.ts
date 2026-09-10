@@ -3,7 +3,7 @@ import { customType } from "drizzle-orm/pg-core";
 // Case-insensitive text. Trusted on the pinned image (verified against a
 // running container: citext.control has `trusted = true`, so the
 // `frontdesk` owner role can CREATE EXTENSION it directly - no superuser,
-// no image bump. Created in drizzle/0001_extensions_assert.sql.
+// no image bump. Created in drizzle/0000_extensions_assert.sql.
 export const citext = customType<{ data: string }>({
   dataType() {
     return "citext";
