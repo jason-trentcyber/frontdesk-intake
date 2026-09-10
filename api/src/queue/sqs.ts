@@ -71,25 +71,50 @@ export class SqsQueue<T> implements Queue<T> {
   }
 
   async ack(id: string): Promise<void> {
-    await this.client.send(new DeleteMessageCommand({ QueueUrl: this.queueUrl, ReceiptHandle: id }));
+    await this.client.send(
+      new DeleteMessageCommand({ QueueUrl: this.queueUrl, ReceiptHandle: id }),
+    );
     this.received.delete(id);
   }
 
+  // Returns the message to the queue immediately. NOTE: the id (a receipt
+  // handle) is not reliably usable afterwards. SQS issues a new receipt
+  // handle every time a message is received, and requires the most recent
+  // one for DeleteMessage; once another consumer picks this message up,
+  // this handle is stale. So ack()/deadLetter() after nack() WITHOUT an
+  // intervening receive() is unsupported - re-receive and use the new id.
+  //
+  // Verified against LocalStack 4.14.0: it accepts the stale handle and
+  // deletes the message. That is LocalStack being lenient, not a contract
+  // real SQS offers, which is exactly why this is documented rather than
+  // pinned by a contract test - the test would encode LocalStack's
+  // behaviour and pass while production diverged. pgmq has no equivalent
+  // hazard: its ids are stable message ids, not lease tokens.
   async nack(id: string): Promise<void> {
     await this.client.send(
-      new ChangeMessageVisibilityCommand({ QueueUrl: this.queueUrl, ReceiptHandle: id, VisibilityTimeout: 0 }),
+      new ChangeMessageVisibilityCommand({
+        QueueUrl: this.queueUrl,
+        ReceiptHandle: id,
+        VisibilityTimeout: 0,
+      }),
     );
-    // Left in the cache: a caller may legitimately deadLetter this id
-    // without an intervening receive().
+    // Body stays cached: eviction is ack()/deadLetter()'s job, and the
+    // cache is per-instance and short-lived.
   }
 
   async deadLetter(id: string): Promise<void> {
     const body = this.received.get(id);
     if (body === undefined) {
-      throw new Error(`deadLetter(${id}): no cached body - id must come from receive() on this adapter instance`);
+      throw new Error(
+        `deadLetter(${id}): no cached body - id must come from receive() on this adapter instance`,
+      );
     }
-    await this.client.send(new SendMessageCommand({ QueueUrl: this.dlqUrl, MessageBody: JSON.stringify(body) }));
-    await this.client.send(new DeleteMessageCommand({ QueueUrl: this.queueUrl, ReceiptHandle: id }));
+    await this.client.send(
+      new SendMessageCommand({ QueueUrl: this.dlqUrl, MessageBody: JSON.stringify(body) }),
+    );
+    await this.client.send(
+      new DeleteMessageCommand({ QueueUrl: this.queueUrl, ReceiptHandle: id }),
+    );
     this.received.delete(id);
   }
 }
