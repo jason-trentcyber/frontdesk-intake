@@ -241,7 +241,7 @@ jobs:
       # then assert the skip count - the suite is not run twice.
       - name: Test (and assert nothing skipped)
         run: |
-          pnpm --filter @frontdesk/api exec vitest run --reporter=default --reporter=json --outputFile=/tmp/api-tests.json
+          pnpm --filter @frontdesk/api test --reporter=default --reporter=json --outputFile=/tmp/api-tests.json
           skipped=$(node -e "const r=require('/tmp/api-tests.json');console.log(r.numPendingTests+r.numTodoTests)")
           echo "skipped=$skipped"
           if [ "$skipped" != "0" ]; then
