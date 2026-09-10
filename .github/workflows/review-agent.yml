@@ -135,13 +135,22 @@ jobs:
           # through: the next step reads `subtype` and fails with the actual
           # reason. Under `set -e` the job died here with a bare "exit code 1"
           # and no diagnosis (#58, #57's first run). The budget cap bounds cost.
+          #
+          # --max-turns is a stop on runaway loops, not the cost control -
+          # --max-budget-usd is. Observed turns on real PRs: 2-8 for an
+          # ADR/docs diff, 10-15 for an infra fix, 14 for #78 (48 files),
+          # 16 for #80 - which died at the old cap of 15 with $0.30 of a
+          # $1.00 budget spent, i.e. the wrong bound fired. 30 turns at the
+          # observed ~$0.019/turn is ~$0.57, still inside the budget, so the
+          # budget stays the binding constraint on every PR this repo has
+          # produced (#59 raised this 6 -> 15 for the same reason).
           cat prompt.txt | claude -p \
             --bare \
             --append-system-prompt-file docs/review-rubric.md \
             --output-format json \
             --json-schema "$(cat schema.json)" \
             --model sonnet \
-            --max-turns 15 \
+            --max-turns 30 \
             --max-budget-usd 1.00 \
             --allowedTools Read,Grep,Glob \
             > review.json || echo "claude exited $? (see review.json)"
