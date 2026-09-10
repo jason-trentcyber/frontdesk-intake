@@ -65,50 +65,53 @@ handle alone can't recover a message's body - the adapter caches it
 in-memory from `receive()`, keyed by the same id `deadLetter` is called
 with. pgmq needs no equivalent.
 
-### The pgmq queue does not exist until a human creates it - read this before testing locally
+### Queue provisioning: `frontdesk_app` at startup, not a migration
 
-The design (this brief) called for `db/drizzle/0005_pgmq_queue.sql` - a
-migration, run as `frontdesk` (the owner role, `frontdesk-db-migrate`),
-that calls `pgmq.create('frontdesk_triage')` once, guarded to be a
-no-op on re-run.
-
-**This does not work.** Verified directly against the pinned image:
+The #22 brief called for `db/drizzle/0005_pgmq_queue.sql` - a migration
+run as `frontdesk` (the owner role, via `frontdesk-db-migrate`) calling
+`pgmq.create('frontdesk_triage')`. **That is impossible**, verified
+against the pinned image:
 
 ```
 $ psql "$DATABASE_URL" -c "select pgmq.create('frontdesk_triage');"     # as frontdesk
 ERROR:  permission denied for schema pgmq
 ```
 
-`deploy/postgres/initdb/002-roles.sh` grants `USAGE`/`CREATE` on schema
-`pgmq` to `frontdesk_app` only - never to `frontdesk`. `frontdesk` can't
-self-grant it (the schema is owned by `postgres`; granting requires
-being the owner, a superuser, or already holding the privilege
-`WITH GRANT OPTION` - `frontdesk` is none of those, and has no role
-membership path to `frontdesk_app` either: `SET ROLE frontdesk_app` as
-`frontdesk` returns `permission denied to set role`). This isn't an ADR
-conflict - no decided ADR text mandates the migration mechanism, ADR-0016
-just documents that pgmq queues get created by `pgmq.create()` without
-saying by whom - but it makes the brief's specific approach impossible
-as written, so per that brief's own instruction: **stopped and reported
-here rather than improvising a different production mechanism** (in
-particular, `PostgresQueue` does **not** call `pgmq.create()` itself -
-"do not create the queue lazily on first send" stands regardless of this
-gap).
+`frontdesk` has no privileges on schema `pgmq` at all, cannot self-grant
+them (the schema is owned by `postgres`), and has no role-membership path
+to `frontdesk_app`.
 
-**Until this is fixed** (a `deploy/postgres/` follow-up granting
-`frontdesk` the same `pgmq` schema privileges `frontdesk_app` already
-has - an image-bump PR, ADR-0016's territory, out of scope here), the
-queue is provisioned by hand, as `frontdesk_app` (which does have the
-grant):
+**That is deliberate, not a gap.** `deploy/postgres/initdb/002-roles.sh`
+grants `CREATE ON SCHEMA pgmq` to `frontdesk_app` specifically, and its
+own comment states why: pgmq's functions carry no `SECURITY DEFINER`, so
+`pgmq.create()` runs its internal `CREATE TABLE` as the calling role, and
+`frontdesk_app` "ends up owning the queue tables it creates - which is
+exactly the access it needs on them, no further grant required". Queue
+tables owned by the app role was already the decided design. The brief
+contradicted it; the brief was wrong.
 
-```
-psql "$DATABASE_APP_URL" -c "select pgmq.create('frontdesk_triage');"
-```
+So the queue is created by `api/` itself at **startup** (`src/queue/ensure.ts`,
+called from `server.ts` before `listen()`), as `frontdesk_app`:
 
-Contract tests and the compose-based local setup do this themselves
-(`queue.contract.test.ts` creates and drops its own uniquely-named test
-queue in `beforeAll`/`afterAll` - test-fixture setup, not the production
-adapter auto-creating anything).
+- **`pgmq.create()` is idempotent.** A second call emits only NOTICEs
+  (`relation "q_frontdesk_triage" already exists, skipping`) and succeeds.
+  Verified against the pinned image, and by restarting the server twice.
+- **Startup, not lazily inside `send()`.** A missing queue then fails the
+  readiness probe instead of surfacing as a 500 on a customer's first form
+  submission. `pgmq.send()` does **not** auto-create: it fails with
+  `relation "pgmq.q_frontdesk_triage" does not exist`. The brief's rule
+  that `PostgresQueue` must not create the queue on first send stands -
+  this is a separate startup step, not the adapter.
+- **This is the only DDL `api/` issues.** It creates no tenant table, so
+  it does not weaken ADR-0018's rule that schema changes are migrations;
+  pgmq's queue tables are outside the Drizzle schema by that ADR's own
+  wording ("pgmq's queue tables stay in schema `pgmq`, outside Drizzle").
+- SQS needs no equivalent: those queues are provisioned by whatever
+  creates the AWS account's resources.
+
+Contract tests create and drop their own uniquely-named test queue in
+`beforeAll`/`afterAll` - fixture setup, independent of this path.
+
 
 ## Local development
 

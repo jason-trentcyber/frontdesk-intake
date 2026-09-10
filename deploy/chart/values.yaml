@@ -114,7 +114,8 @@ api:
 
   # Selection is env-only (ADR-0004) - no auto-detection. sqs needs
   # AWS_REGION/SQS_QUEUE_URL/SQS_DLQ_URL too; none of that is wired here
-  # since pgmq is what's actually deployed (Hetzner, ADR-0004).
+  # because pgmq is the deployed provider (ADR-0004). A platform whose
+  # values file sets sqs supplies those three there, not in this file.
   queueProvider: pgmq
 
 # Postgres 16 + pgvector + pgmq, as a StatefulSet in this same chart/release
