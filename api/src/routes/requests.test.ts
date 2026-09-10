@@ -30,7 +30,9 @@ class FakeQueue implements Queue<TriageMessage> {
 // db/src/rls.test.ts, so `pnpm test` at the repo root stays green
 // without Postgres running.
 describe.skipIf(!hasEnv)(
-  hasEnv ? "POST /api/v1/orgs/:slug/requests" : "POST /api/v1/orgs/:slug/requests [skipped: DATABASE_URL/DATABASE_APP_URL not set]",
+  hasEnv
+    ? "POST /api/v1/orgs/:slug/requests"
+    : "POST /api/v1/orgs/:slug/requests [skipped: DATABASE_URL/DATABASE_APP_URL not set]",
   () => {
     let ownerDb: Db;
     let appDb: Db;
@@ -45,11 +47,15 @@ describe.skipIf(!hasEnv)(
       ownerDb = createDb(ownerUrl!);
       appDb = createDb(appUrl!);
 
-      const orgs = await ownerDb.execute<{ id: string; slug: string }>(sql`select id, slug from orgs`);
+      const orgs = await ownerDb.execute<{ id: string; slug: string }>(
+        sql`select id, slug from orgs`,
+      );
       const demo = orgs.rows.find((o) => o.slug === "bright-smile-dental");
       const other = orgs.rows.find((o) => o.slug === "harbor-legal");
       if (!demo || !other) {
-        throw new Error("expected seed data (bright-smile-dental, harbor-legal) - run `pnpm seed` first");
+        throw new Error(
+          "expected seed data (bright-smile-dental, harbor-legal) - run `pnpm seed` first",
+        );
       }
       demoOrgId = demo.id;
       otherOrgSlug = other.slug;
@@ -57,7 +63,12 @@ describe.skipIf(!hasEnv)(
       apiKeyPlain = `test-${randomUUID()}`;
       const [key] = await ownerDb
         .insert(apiKeys)
-        .values({ orgId: demoOrgId, keyHash: hashApiKey(apiKeyPlain), prefix: apiKeyPlain.slice(0, 8), name: "contract-test" })
+        .values({
+          orgId: demoOrgId,
+          keyHash: hashApiKey(apiKeyPlain),
+          prefix: apiKeyPlain.slice(0, 8),
+          name: "contract-test",
+        })
         .returning({ id: apiKeys.id });
       if (!key) throw new Error("failed to seed API key");
       apiKeyId = key.id;
@@ -109,7 +120,10 @@ describe.skipIf(!hasEnv)(
       expect(json.trackingToken).toBeTruthy();
       expect(json.trackingUrl).toBe(`https://frontdesk.jtrent.dev/t/${json.trackingToken}`);
 
-      const [row] = await ownerDb.select().from(requests).where(eq(requests.trackingToken, json.trackingToken));
+      const [row] = await ownerDb
+        .select()
+        .from(requests)
+        .where(eq(requests.trackingToken, json.trackingToken));
       expect(row).toBeDefined();
       expect(row?.orgId).toBe(demoOrgId);
       expect(row?.source).toBe("api");
@@ -197,6 +211,50 @@ describe.skipIf(!hasEnv)(
         payload: { subject: "s", body: "b", "cf-turnstile-response": "token" },
       });
       expect(res.statusCode).toBe(403);
+    });
+
+    // Body validation is a DIFFERENT 400 from the auth-mode guard above:
+    // that one rejects the request before looking at the body at all.
+    // These use the turnstile path so auth passes and the schema is what
+    // fails. Nothing reaches the database or the queue.
+    describe("invalid body -> 400", () => {
+      it.each([
+        ["missing subject", { body: "b" }],
+        ["missing body", { subject: "s" }],
+        ["subject present but blank", { subject: "   ", body: "b" }],
+        [
+          "requesterEmail not an email",
+          { subject: "s", body: "b", requesterEmail: "not-an-email" },
+        ],
+        ["requesterName present but blank", { subject: "s", body: "b", requesterName: "  " }],
+      ])("%s", async (_label, partial) => {
+        const { app, queue } = buildTestApp(alwaysTrue);
+        const res = await app.inject({
+          method: "POST",
+          url: "/api/v1/orgs/bright-smile-dental/requests",
+          payload: { ...partial, "cf-turnstile-response": "token" },
+        });
+        expect(res.statusCode).toBe(400);
+        expect(res.headers["content-type"]).toContain("application/problem+json");
+        const problem = res.json() as { title: string; detail: string };
+        expect(problem.title).toBe("Bad Request");
+        expect(problem.detail).toBeTruthy();
+        // A rejected request is never enqueued.
+        expect(queue.sent).toEqual([]);
+      });
+
+      it("does not create a requests row", async () => {
+        const { app } = buildTestApp(alwaysTrue);
+        const before = await ownerDb.select().from(requests);
+        const res = await app.inject({
+          method: "POST",
+          url: "/api/v1/orgs/bright-smile-dental/requests",
+          payload: { body: "b", "cf-turnstile-response": "token" },
+        });
+        expect(res.statusCode).toBe(400);
+        const after = await ownerDb.select().from(requests);
+        expect(after).toHaveLength(before.length);
+      });
     });
   },
 );
