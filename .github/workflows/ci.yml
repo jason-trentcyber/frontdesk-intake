@@ -201,9 +201,9 @@ jobs:
           --health-timeout 5s
           --health-retries 20
     env:
-      DATABASE_URL: postgresql://frontdesk:***@localhost:5432/frontdesk
-      DATABASE_APP_URL: postgresql://frontdesk_app:***@localhost:5432/frontdesk
-      MIGRATE_DATABASE_URL: postgresql://frontdesk:***@localhost:5432/frontdesk
+      DATABASE_URL: postgresql://frontdesk:frontdesk@localhost:5432/frontdesk
+      DATABASE_APP_URL: postgresql://frontdesk_app:frontdesk_app@localhost:5432/frontdesk
+      MIGRATE_DATABASE_URL: postgresql://frontdesk:frontdesk@localhost:5432/frontdesk
       SEED_OWNER_EMAIL: owner@example.com
       AWS_ENDPOINT_URL: http://localhost:4566
       AWS_REGION: us-east-1
