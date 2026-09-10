@@ -13,7 +13,7 @@ frontdesk is an AI-assisted request desk for small businesses, built in public a
 
 | Path | Governing ADR(s) | Notes |
 |---|---|---|
-| `deploy/chart/` | 0001 runtime, 0002 ingress, 0010 sizing, 0014 deploy, 0015 values-file path + RBAC, 0016 postgres, 0017 consumer creds + config_file, 0018 migrate Job | One chart, one release; Postgres is a StatefulSet in it (`postgres.enabled`), image pinned by digest only in image-bump PRs; `values-hetzner.yaml`/`values-eks.yaml` live inside it (0015 supersedes ADR-0001's top-level path for these two files); k3s-agnostic otherwise; total requests < 2.8 GB; images by digest from GHCR |
+| `deploy/chart/` | 0001 runtime, 0002 ingress, 0010 sizing, 0014 deploy, 0015 values-file path + RBAC, 0016 postgres, 0017 consumer creds + config_file, 0018 migrate Job, 0019 migrate hook phase | One chart, one release; Postgres is a StatefulSet in it (`postgres.enabled`), image pinned by digest only in image-bump PRs; `values-hetzner.yaml`/`values-eks.yaml` live inside it (0015 supersedes ADR-0001's top-level path for these two files); k3s-agnostic otherwise; total requests < 2.8 GB; images by digest from GHCR |
 | `deploy/bootstrap/`, `deploy/values-eks.yaml` (top-level) | 0001 runtime, 0002 ingress, 0010 sizing; `rbac/` also 0014, 0015, 0016 | Plain `helm upgrade --install` per chart, no Helmfile; requests <= 600 Mi; the top-level `values-eks.yaml` is the bootstrap ingress-nginx Service-type swap only, distinct from `deploy/chart/values-eks.yaml`; `rbac/deployer` Role's full verb list is in ADR-0015 |
 | `deploy/postgres/` | 0016 postgres, 0017 consumer creds, 0004 queue, 0005 retrieval, 0007 tenancy | Dockerfile (pgvector base + pgmq SQL), initdb roles (`frontdesk` owner, `frontdesk_app` runtime, both `NOBYPASSRLS`), backup/restore runbook; image tag = content, never overwritten |
 | `infra/hetzner/` | 0001, 0002, 0010, 0012, 0013 | Terraform, cloud-init k3s; 4 GB x86 node, observability off-node; local state, off-host copy; admin access over the tailnet |
@@ -22,7 +22,7 @@ frontdesk is an AI-assisted request desk for small businesses, built in public a
 | `web/` auth, sessions, membership | 0003 auth, 0007 tenancy, 0018 data layer | PRs touching these get `security`; `@auth/drizzle-adapter`; tenant reads/writes only through `forOrg()` from `@frontdesk/db` |
 | `api/` queue producer | 0004 queue | `Queue` interface; pgmq + SQS adapters |
 | `api/` any tenant query | 0007 tenancy, 0018 data layer | `org_id` always; through `forOrg()` from `@frontdesk/db`, never a bare `db` on a tenant table |
-| `db/` | 0018 data layer, 0007 tenancy, 0005 retrieval, 0016/0017 roles + creds | Drizzle schema (tables + `pgPolicy` in the same file), `drizzle-kit` migrations, resolvers, seeds, coverage test, `frontdesk-db` migrate image; every new tenant table = `org_id` + `.enableRLS()` + policy |
+| `db/` | 0018 data layer, 0019 migrate hook phase, 0007 tenancy, 0005 retrieval, 0016/0017 roles + creds | Drizzle schema (tables + `pgPolicy` in the same file), `drizzle-kit` migrations, resolvers, seeds, coverage test, `frontdesk-db` migrate image; every new tenant table = `org_id` + `.enableRLS()` + policy |
 | `worker/llm/` | 0006 llm-routing | The ONLY place a provider is named |
 | `worker/` ingestion, retrieval | 0005 retrieval | bge-small, HNSW params, RRF |
 | `worker/prompts/` | 0008 sdlc §7, 0005 | Every change runs the eval gate |
