@@ -233,17 +233,15 @@ jobs:
       - name: Seed
         run: pnpm seed
 
-      - name: Test
-        run: pnpm --filter @frontdesk/api test
-
       # A skipped test is not a passing test. Every api/ test file gates
       # itself on env (DATABASE_APP_URL, AWS_ENDPOINT_URL) so it can run
       # on a laptop without services; that same guard would let the whole
-      # suite silently skip here if a service or env var went missing, and
-      # the job would still be green. Assert the count instead.
-      - name: Assert no tests were skipped
+      # suite silently skip here if a service container or env var went
+      # missing, and the job would still be green. One run, JSON reporter,
+      # then assert the skip count - the suite is not run twice.
+      - name: Test (and assert nothing skipped)
         run: |
-          pnpm --filter @frontdesk/api exec vitest run --reporter=json --outputFile=/tmp/api-tests.json
+          pnpm --filter @frontdesk/api exec vitest run --reporter=default --reporter=json --outputFile=/tmp/api-tests.json
           skipped=$(node -e "const r=require('/tmp/api-tests.json');console.log(r.numPendingTests+r.numTodoTests)")
           echo "skipped=$skipped"
           if [ "$skipped" != "0" ]; then
