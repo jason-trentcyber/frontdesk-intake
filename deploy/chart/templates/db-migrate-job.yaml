@@ -1,0 +1,98 @@
+{{- if .Values.db.migrate.enabled }}
+# ADR-0018 names this Job; ADR-0019 corrects its hook phase from
+# ADR-0018's original pre-install,pre-upgrade. pre-install is a deadlock
+# on a fresh install: Helm applies pre-install hooks *before* the
+# release's own resources, so the Job would wait on a Postgres
+# StatefulSet that cannot exist yet - db/src/migrate.ts's 30x2s
+# connection retry only covers Postgres restarting mid-upgrade, not the
+# StatefulSet's total absence. post-install runs after Helm's --wait has
+# already confirmed Postgres is Ready; pre-upgrade is unchanged from
+# ADR-0018, so a failing migration still fails the release before `web`
+# rolls onto a schema it doesn't match.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "frontdesk.db.migrateJobName" . }}
+  labels:
+    {{- include "frontdesk.db.migrateLabels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: post-install,pre-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+    helm.sh/hook-weight: "0"
+spec:
+  backoffLimit: 0
+  # The connection retry inside the image (30x2s) covers the ordinary
+  # case; this is the outer bound so a genuinely stuck Job doesn't hang
+  # the release forever.
+  activeDeadlineSeconds: 600
+  template:
+    metadata:
+      labels:
+        {{- include "frontdesk.db.migrateLabels" . | nindent 8 }}
+        {{- include "frontdesk.partOf" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: migrate
+          image: {{ include "frontdesk.db.image" . }}
+          imagePullPolicy: {{ .Values.db.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: PGHOST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "frontdesk.postgres.fullname" . }}-connection
+                  key: PGHOST
+            - name: PGPORT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "frontdesk.postgres.fullname" . }}-connection
+                  key: PGPORT
+            - name: PGDATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "frontdesk.postgres.fullname" . }}-connection
+                  key: PGDATABASE
+            - name: PGUSER
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "frontdesk.postgres.fullname" . }}-connection
+                  key: MIGRATE_PGUSER
+            # This Job is the only pod in the release allowed to
+            # reference frontdesk-password (ADR-0017's two-audience
+            # split) - web/api/worker reference frontdesk-app-password
+            # only.
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgres.credentialsSecret }}
+                  key: frontdesk-password
+            - name: MIGRATE_DATABASE_URL
+              value: "postgresql://$(PGUSER):$(PGPASSWORD)@$(PGHOST):$(PGPORT)/$(PGDATABASE)"
+            # db/src/seed.ts runs as the owner role too (ADR-0018
+            # "Seeds... runs as frontdesk") - same connection, the
+            # distinct name is so migrate.ts/drizzle.config.ts and
+            # seed.ts each read the var db/README.md documents for them.
+            - name: DATABASE_URL
+              value: "postgresql://$(PGUSER):$(PGPASSWORD)@$(PGHOST):$(PGPORT)/$(PGDATABASE)"
+            - name: SEED_OWNER_EMAIL
+              value: {{ .Values.db.seed.ownerEmail | quote }}
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+{{- end }}

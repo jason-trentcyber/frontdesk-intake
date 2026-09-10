@@ -30,7 +30,7 @@ else ever connects):
 | Role | Superuser? | `BYPASSRLS`? | Used by |
 |---|---|---|---|
 | `postgres` | yes | n/a (superuser bypasses RLS regardless) | the container entrypoint; the nightly backup CronJob |
-| `frontdesk` | no | no | owner of the `frontdesk` database; runs Prisma migrations (#21) |
+| `frontdesk` | no | no | owner of the `frontdesk` database; runs `@frontdesk/db` migrations and seeds (`frontdesk-db-migrate`, ADR-0018/0019) |
 | `frontdesk_app` | no | no | runtime role - what web/api/worker actually connect as |
 
 Both `frontdesk` and `frontdesk_app` are `NOBYPASSRLS` on purpose
@@ -38,7 +38,8 @@ Both `frontdesk` and `frontdesk_app` are `NOBYPASSRLS` on purpose
 security, which would make RLS policies look like they work in every
 manual check and then do nothing for the app. `frontdesk_app`'s
 privileges come from `frontdesk`'s `ALTER DEFAULT PRIVILEGES` in
-`002-roles.sh` for `public`-schema tables (Prisma's), plus direct grants
+`002-roles.sh` for `public`-schema tables (`@frontdesk/db`'s, via its
+Drizzle migrations), plus direct grants
 on `pgmq`'s own pre-existing tables and `CREATE` on the `pgmq` schema
 itself (pgmq's functions have no `SECURITY DEFINER`, so `pgmq.create()`
 needs the caller to be able to create tables there directly - see that
@@ -77,10 +78,22 @@ env:
 ```
 
 Keep the ADR's two-audience split: web/api/worker only ever reference
-`APP_PGUSER` + `frontdesk-app-password`. Only the Prisma migration Job
-(#21) references `MIGRATE_PGUSER` + `frontdesk-password`. Locally,
-`.env`/`.env.example` mirror this as two separate variables,
-`DATABASE_URL` (owner) and `DATABASE_APP_URL` (runtime).
+`APP_PGUSER` + `frontdesk-app-password`. Only the `frontdesk-db-migrate`
+Helm hook Job (`deploy/chart/templates/db-migrate-job.yaml`, ADR-0018,
+hook phase corrected by ADR-0019; `@frontdesk/db`'s compiled image,
+`db/Dockerfile`) references `MIGRATE_PGUSER` + `frontdesk-password` — the
+only pod in the release allowed to. Locally, `.env`/`.env.example` mirror
+this as two separate variables, `DATABASE_URL` (owner) and
+`DATABASE_APP_URL` (runtime).
+
+### Pods that connect to Postgres
+
+| Pod | Role | Password key |
+|---|---|---|
+| `postgres` (the StatefulSet itself) | `postgres` | `postgres-password` |
+| nightly backup `CronJob` (`frontdesk-db-backup`) | `postgres` | `postgres-password` |
+| `frontdesk-db-migrate` (Helm hook Job) | `frontdesk` | `frontdesk-password` |
+| `web`, and `api`/`worker` once they land | `frontdesk_app` | `frontdesk-app-password` |
 
 ## Backups
 

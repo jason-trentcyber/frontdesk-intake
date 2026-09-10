@@ -108,3 +108,34 @@ app.kubernetes.io/component: postgres
 {{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}
 {{- end -}}
 {{- end -}}
+
+{{- define "frontdesk.db.image" -}}
+{{- if .Values.db.image.digest -}}
+{{ .Values.db.image.repository }}@{{ .Values.db.image.digest }}
+{{- else -}}
+{{ .Values.db.image.repository }}:{{ .Values.db.image.tag }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Fixed name, not derived from frontdesk.name: ADR-0018 and ADR-0019 both
+name this Job frontdesk-db-migrate in their decision and acceptance text
+(`kubectl -n frontdesk logs job/frontdesk-db-migrate`).
+*/}}
+{{- define "frontdesk.db.migrateJobName" -}}
+frontdesk-db-migrate
+{{- end -}}
+
+{{/*
+Must not match any Service selector, same reasoning as
+frontdesk.postgres.backupLabels (#75: a backup pod became a Postgres
+endpoint because it carried the Service's selector labels). This Job's
+pod carries no component-specific selector labels anywhere else in the
+chart, but the component label is still its own value, not "postgres" or
+"web", so a future Service selecting on component can't accidentally
+pick it up either.
+*/}}
+{{- define "frontdesk.db.migrateLabels" -}}
+{{ include "frontdesk.labels" . }}
+app.kubernetes.io/component: db-migrate
+{{- end -}}

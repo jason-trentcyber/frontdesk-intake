@@ -22,6 +22,16 @@
 postgres:
   enabled: false
 
+# postgres.enabled: false above means frontdesk-postgres-connection (the
+# ConfigMap db-migrate-job.yaml reads PGHOST/PGPORT/... from) never
+# renders, so the migrate Job would have no host to connect to. Turning
+# it off here is the same values-file discipline as postgres.enabled
+# itself; re-enabling it on EKS is the same PR that wires
+# database.externalSecretName below into the Job's env.
+db:
+  migrate:
+    enabled: false
+
 # Not yet consumed by any template - #20 PR B ships no RDS-consuming
 # component. Documents the shape for whichever of #21 (Prisma)/#22
 # (api)/#23 (worker) lands on EKS first: a human (or Terraform, outside

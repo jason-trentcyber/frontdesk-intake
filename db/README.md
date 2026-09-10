@@ -73,6 +73,43 @@ only, never a row's data. Everything else goes through `forOrg()`
 hands it back to the caller to carry explicitly — RLS is the backstop,
 not the only line.
 
+## Production migrations
+
+`db/Dockerfile` builds `ghcr.io/jason-trentcyber/frontdesk-db` — a
+compiled runtime image (`tsc -p tsconfig.build.json`, no `tsx`,
+no `drizzle-kit`), built and digest-pinned by `deploy.yml` alongside
+`frontdesk-web`. `deploy/chart/templates/db-migrate-job.yaml` runs it as
+a Helm hook, `frontdesk-db-migrate`, with `CMD ["sh", "-c", "node
+dist/migrate.js && node dist/seed.js"]`.
+
+**Hook phase: `post-install,pre-upgrade`, not `pre-install`** (ADR-0019,
+amending ADR-0018). Helm applies `pre-install` hooks *before* the
+release's own resources, so a `pre-install` migrate Job on a fresh
+install would wait on a Postgres `StatefulSet` that cannot exist yet —
+a deadlock, not a race, and no retry window fixes it (`migrate.ts`'s
+30×2s connection retry covers Postgres restarting mid-upgrade, not the
+StatefulSet's total absence). So:
+
+- **Install:** Helm applies the chart, `--wait` blocks until the
+  Postgres pod is Ready, *then* the migrate Job runs — `post-install`.
+  The release only succeeds if the migration does.
+- **Upgrade:** unchanged from ADR-0018 — `pre-upgrade`, so a failing
+  migration fails the release before `web` rolls onto a schema it
+  doesn't match.
+
+`helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded` keeps
+a *failed* hook pod around (only a successful one is cleaned up before
+the next one runs) — read why it failed with:
+
+```
+kubectl -n frontdesk logs job/frontdesk-db-migrate
+```
+
+then fix forward with a new migration; migrations are forward-only
+(`docs/conventions.md`), so `helm rollback` does not undo one — recovery
+from a bad migration is a restore from the ADR-0016 dump
+(`deploy/postgres/restore-drill.sh`), not a rollback.
+
 ## Local env vars
 
 See `.env.example`. `DATABASE_URL` (owner role) and `DATABASE_APP_URL`
