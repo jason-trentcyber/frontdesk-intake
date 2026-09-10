@@ -1,6 +1,6 @@
 # ADR-0019: The `frontdesk-db-migrate` Job runs `post-install,pre-upgrade`, not `pre-install,pre-upgrade`; amends ADR-0018
 
-Status: decided 2026-09-10. Supersedes the hook-phase clause `pre-install,pre-upgrade` in ADR-0018's Migrations section. Everything else in ADR-0018 stands: the Job's name, `backoffLimit: 0`, the delete policy, the dedicated `ghcr.io/jason-trentcyber/frontdesk-db` image built and digest-pinned by `deploy.yml`, the ADR-0017 credential split (this Job is the only pod referencing `frontdesk-password`), the labels that match no Service selector, and migrations-then-seed as the Job's command.
+Status: decided 2026-09-10; the chart template carrying this annotation lands in #21 PR C, not in this PR (no `deploy/chart/` Job exists yet — same split as ADR-0018). Supersedes the hook-phase clause `pre-install,pre-upgrade` in ADR-0018's Migrations section. Everything else in ADR-0018 stands: the Job's name, `backoffLimit: 0`, the delete policy, the dedicated `ghcr.io/jason-trentcyber/frontdesk-db` image built and digest-pinned by `deploy.yml`, the ADR-0017 credential split (this Job is the only pod referencing `frontdesk-password`), the labels that match no Service selector, and migrations-then-seed as the Job's command.
 
 ## Context
 
