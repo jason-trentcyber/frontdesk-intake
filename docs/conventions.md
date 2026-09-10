@@ -51,7 +51,7 @@ The owning ADR for each directory is listed in `CLAUDE.md`. Read it before editi
 - Every tenant table has `org_id NOT NULL` + FK. No exceptions, no "global" convenience tables that later grow tenant data.
 - Tenant reads and writes in `web/` and `api/` go through `forOrg(orgId, tx => …)` from `@frontdesk/db`, which sets `app.org_id` for the transaction; queries still carry `org_id` explicitly (belt and braces, ADR-0018). Raw SQL on tenant tables (the Python worker) must include `org_id` in the predicate and `set_config('app.org_id', …, true)` in the same transaction.
 - A new tenant table shows, in the same schema file: the `org_id` column + FK, `.enableRLS()`, and its `pgPolicy` comparing `org_id` to `current_org_id()`. The `db/` coverage test fails otherwise. A `SECURITY DEFINER` function or any policy that does not compare `org_id` to `current_org_id()` gets the `security` label and a human review.
-- Migrations are `drizzle-kit` migrations (generated or `--custom`), committed, forward-only, applied in production only by the `frontdesk-db-migrate` hook Job. Never edit an applied migration. Enum values are added in their own migration file.
+- Migrations are `drizzle-kit` migrations (generated or `--custom`), committed, forward-only, applied in production only by the `frontdesk-db-migrate` hook Job (`post-install,pre-upgrade` — ADR-0019). Never edit an applied migration. Enum values are added in their own migration file.
 - Seed data is fictional and obviously so. No real names, addresses, phone numbers.
 
 ## Code style
@@ -87,3 +87,4 @@ The owning ADR for each directory is listed in `CLAUDE.md`. Read it before editi
 - Terraform: `terraform fmt` + `validate` on both roots in CI. State backend is documented in `infra/hetzner/README.md`. Never `apply` from a laptop; CI applies on merge with a scoped token.
 - Helm: `helm lint` in CI. Every container has resource requests and limits (8 GB node, ADR-0001). Images pinned by digest in values.
 - Nothing in `deploy/chart/` may reference k3s, Hetzner, or Cloudflare by name; those belong in the values files.
+- **Name the layer before deciding a mechanism.** For every clause that says the chart or a Job does something, ask which layer it runs at — Helm template time, admission, a controller, or pod runtime — and whether its inputs exist there. Three ADR clauses have failed this test: rendering a `DATABASE_URL` Secret from a sealed Secret at template time (ADR-0016 → ADR-0017), a `postgresql.conf` include with no include hook in the image (#73), and a `pre-install` migrate Job that waits on a StatefulSet Helm has not applied yet (ADR-0018 → ADR-0019).
