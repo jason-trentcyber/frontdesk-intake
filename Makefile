@@ -4,7 +4,7 @@ COMPOSE ?= $(CONTAINER) compose
 POSTGRES_USER ?= frontdesk
 POSTGRES_DB ?= frontdesk
 
-.PHONY: help up down logs psql lint typecheck test eval bootstrap bootstrap-rbac
+.PHONY: help up down logs psql migrate seed lint typecheck test eval bootstrap bootstrap-rbac
 
 .DEFAULT_GOAL := help
 
@@ -14,6 +14,8 @@ help:
 	@echo "  down       stop and remove local services"
 	@echo "  logs       follow logs for local services"
 	@echo "  psql       open a psql shell against the local postgres"
+	@echo "  migrate    apply @frontdesk/db migrations (drizzle-kit) to the local postgres"
+	@echo "  seed       pnpm --filter @frontdesk/db seed (idempotent, ADR-0018)"
 	@echo "  lint       eslint/prettier (pnpm) + ruff (uv)"
 	@echo "  typecheck  tsc (pnpm) + pyright (uv)"
 	@echo "  test       vitest (pnpm) + pytest (uv)"
@@ -34,6 +36,12 @@ logs:
 
 psql:
 	$(COMPOSE) exec postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB)
+
+migrate:
+	pnpm --filter @frontdesk/db migrate
+
+seed:
+	pnpm seed
 
 lint:
 	pnpm lint

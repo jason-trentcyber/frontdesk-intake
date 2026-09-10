@@ -77,6 +77,70 @@ jobs:
           file: web/Dockerfile
           push: false
 
+  db:
+    runs-on: ubuntu-latest
+    # Chart-pinned image (deploy/chart/values.yaml postgres.image.digest,
+    # ADR-0016) so roles and extensions in CI match production exactly.
+    # Public on GHCR (verified anonymous pull, #20) - no login needed.
+    services:
+      postgres:
+        image: ghcr.io/jason-trentcyber/frontdesk-postgres@sha256:6b99f66e5de740b1e5cff5726a85e8d06e63d4100bcbdacd74378b22bdb19f83
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: frontdesk
+          # Throwaway CI values, plain strings - not secrets.
+          FRONTDESK_PASSWORD: frontdesk
+          FRONTDESK_APP_PASSWORD: frontdesk_app
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d frontdesk"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://frontdesk:frontdesk@localhost:5432/frontdesk
+      DATABASE_APP_URL: postgresql://frontdesk_app:frontdesk_app@localhost:5432/frontdesk
+      MIGRATE_DATABASE_URL: postgresql://frontdesk:frontdesk@localhost:5432/frontdesk
+      SEED_OWNER_EMAIL: owner@example.com
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: |
+          pnpm --version
+          pnpm install --frozen-lockfile
+
+      - name: Migrate
+        run: pnpm --filter @frontdesk/db migrate
+
+      - name: Seed
+        run: pnpm seed
+
+      # ADR-0018 acceptance 4: running seed twice must produce identical
+      # row counts (idempotent by natural key).
+      - name: Seed again (idempotency)
+        run: pnpm seed
+
+      - name: Test
+        run: pnpm --filter @frontdesk/db test
+
+      # Drift gate: fails if the committed migrations don't match the
+      # schema in db/src/schema/.
+      - name: Check for schema drift
+        run: pnpm --filter @frontdesk/db check
+
   python:
     runs-on: ubuntu-latest
     defaults:
