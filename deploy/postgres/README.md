@@ -93,7 +93,7 @@ this as two separate variables, `DATABASE_URL` (owner) and
 | `postgres` (the StatefulSet itself) | `postgres` | `postgres-password` |
 | nightly backup `CronJob` (`frontdesk-db-backup`) | `postgres` | `postgres-password` |
 | `frontdesk-db-migrate` (Helm hook Job) | `frontdesk` | `frontdesk-password` |
-| `web`, and `api`/`worker` once they land | `frontdesk_app` | `frontdesk-app-password` |
+| `web`, `api` (#22), and `worker` once it lands | `frontdesk_app` | `frontdesk-app-password` |
 
 ## Backups
 

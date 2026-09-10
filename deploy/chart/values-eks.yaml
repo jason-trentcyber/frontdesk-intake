@@ -42,9 +42,14 @@ db:
 database:
   externalSecretName: ""
 
-# Placeholder for the first component that needs AWS API access directly
-# (QUEUE_PROVIDER=sqs, #22) via IRSA rather than a static credential:
-# web:
+# api/ (#22) needs no override here today. Its Deployment env still
+# points at the in-chart postgres-credentials-derived DATABASE_URL above
+# this file's postgres.enabled: false - fixing that is the same PR as
+# database.externalSecretName's real consumer, not a blank api: block
+# added preemptively. QUEUE_PROVIDER=sqs also needs AWS API access via
+# IRSA rather than a static credential once it's real on EKS:
+# api:
+#   queueProvider: sqs
 #   serviceAccount:
 #     annotations:
 #       eks.amazonaws.com/role-arn: "arn:aws:iam::<account-id>:role/<role-name>"

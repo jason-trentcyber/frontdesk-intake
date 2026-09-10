@@ -57,6 +57,66 @@ web:
     # deny otherwise.
     fromNamespace: ingress-nginx
 
+# api/ is the external integration surface and the sole Queue producer
+# (ADR-0004, ADR-0021) - F3's API-key intake, F15's index-info, its own
+# /healthz + /readyz. Not a REST facade for web/, which reads and writes
+# through @frontdesk/db in-process instead.
+api:
+  replicaCount: 1
+
+  image:
+    repository: ghcr.io/jason-trentcyber/frontdesk-api
+    # Pinned by digest at deploy time (ADR-0014): --set api.image.digest=sha256:...
+    # `tag` is a fallback only so this chart lints/templates without it.
+    digest: ""
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+  serviceAccount:
+    create: true
+    name: ""
+    automountServiceAccountToken: false
+
+  podSecurityContext:
+    runAsNonRoot: true
+    # Matches api/Dockerfile's numeric USER 1001:1001 - same reasoning as
+    # web.podSecurityContext above (#18/#65 postmortem).
+    runAsUser: 1001
+    runAsGroup: 1001
+    seccompProfile:
+      type: RuntimeDefault
+
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: ["ALL"]
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 3001
+
+  networkPolicy:
+    enabled: true
+    # Same reasoning as web's: /api/ is routed through the shared Ingress
+    # (templates/ingress.yaml), so only ingress-nginx needs to reach this
+    # pod directly.
+    fromNamespace: ingress-nginx
+
+  # Selection is env-only (ADR-0004) - no auto-detection. sqs needs
+  # AWS_REGION/SQS_QUEUE_URL/SQS_DLQ_URL too; none of that is wired here
+  # since pgmq is what's actually deployed (Hetzner, ADR-0004).
+  queueProvider: pgmq
+
 # Postgres 16 + pgvector + pgmq, as a StatefulSet in this same chart/release
 # (ADR-0016). postgres.enabled: false on EKS (values-eks.yaml) - the swap
 # is an externally supplied database.externalSecretName (RDS), same

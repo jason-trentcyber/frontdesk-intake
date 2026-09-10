@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "frontdesk.api.fullname" . }}
+  labels:
+    {{- include "frontdesk.api.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.api.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "frontdesk.api.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "frontdesk.api.selectorLabels" . | nindent 8 }}
+        {{- include "frontdesk.partOf" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "frontdesk.api.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.api.serviceAccount.automountServiceAccountToken }}
+      securityContext:
+        {{- toYaml .Values.api.podSecurityContext | nindent 8 }}
+      containers:
+        - name: api
+          image: {{ include "frontdesk.api.image" . }}
+          imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.api.containerSecurityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.api.service.targetPort }}
+              protocol: TCP
+          env:
+            - name: PORT
+              value: {{ .Values.api.service.targetPort | quote }}
+            - name: QUEUE_PROVIDER
+              value: {{ .Values.api.queueProvider | quote }}
+            # ADR-0017's env pattern, exactly - api/ references APP_PGUSER
+            # + frontdesk-app-password only. It must never reference
+            # frontdesk-password; that key is frontdesk-db-migrate's alone
+            # (ADR-0017, ADR-0021).
+            - name: PGHOST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "frontdesk.postgres.fullname" . }}-connection
+                  key: PGHOST
+            - name: PGPORT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "frontdesk.postgres.fullname" . }}-connection
+                  key: PGPORT
+            - name: PGDATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "frontdesk.postgres.fullname" . }}-connection
+                  key: PGDATABASE
+            - name: PGUSER
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "frontdesk.postgres.fullname" . }}-connection
+                  key: APP_PGUSER
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgres.credentialsSecret }}
+                  key: frontdesk-app-password
+            - name: DATABASE_URL
+              value: "postgresql://$(PGUSER):$(PGPASSWORD)@$(PGHOST):$(PGPORT)/$(PGDATABASE)"
+            - name: TURNSTILE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.turnstile.secretName }}
+                  key: {{ .Values.turnstile.secretKey }}
+                  # Same reasoning as web's ConfigMap/Secret wiring
+                  # (deploy/chart/templates/deployment.yaml): not sealed
+                  # until a human seals it (README.md -> Secrets); #27 is
+                  # the first real consumer of the public form path, but
+                  # F3's API-key path doesn't need it at all, so this
+                  # Deployment isn't blocked on that secret existing.
+                  optional: true
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.api.resources | nindent 12 }}

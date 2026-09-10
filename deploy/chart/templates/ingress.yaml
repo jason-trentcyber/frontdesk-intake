@@ -20,6 +20,18 @@ spec:
     - host: {{ .Values.ingress.host }}
       http:
         paths:
+          # More specific prefix first for readability (ingress-nginx
+          # sorts by specificity regardless of list order, but a reader
+          # shouldn't have to know that). One Ingress, one host, two
+          # backends by audience (ADR-0021) - not a second Ingress
+          # resource.
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "frontdesk.api.fullname" . }}
+                port:
+                  number: {{ .Values.api.service.port }}
           - path: /
             pathType: Prefix
             backend:

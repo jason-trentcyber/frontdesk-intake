@@ -4,6 +4,20 @@
 resolvers, migrations, and seeds for the tenancy data layer. Design is
 **ADR-0018**; read that first, this file only covers day-to-day mechanics.
 
+## Importing this package
+
+`src/index.ts` re-exports `client.ts` (`createDb`, `forOrg`,
+`resolveMembership`/`resolveApiKey`/`resolveTracking`, `Db`,
+`NON_TENANT_TABLES`), every table in `src/schema/`, and `settings.ts` -
+`import { forOrg, requests, orgs } from "@frontdesk/db"`. `package.json`'s
+`main`/`types` point at `dist/`, not `src/` - **this package must be
+built (`pnpm --filter @frontdesk/db build`) before anything that
+consumes it as `"@frontdesk/db"` can typecheck, test, or run**. `api/`
+(#22, the first real cross-package consumer) handles this with
+`pretypecheck`/`pretest` hooks in its own `package.json` that build `db/`
+first; a new consumer needs the same two lines, not a different
+mechanism.
+
 ## Adding a table
 
 Every tenant table needs, in its own schema file: an `orgId` column
