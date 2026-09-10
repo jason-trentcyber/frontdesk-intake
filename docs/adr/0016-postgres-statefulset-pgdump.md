@@ -49,7 +49,7 @@ The application (#21–#29) needs a Postgres 16 with `pgvector` (ADR-0005) and `
 - `apps/statefulsets` — full CRUD.
 - `""/persistentvolumeclaims` — `get`/`list`/`watch`/`create`/`patch`/`update`. **No `delete`.** CI can create the volumes and adjust labels; only a human with the admin kubeconfig can delete a PVC.
 - `batch/cronjobs` — full CRUD (the backup schedule is chart-managed).
-- `batch/jobs` — `get`/`list`/`watch`/`create`/`delete` (the Prisma migration Job from #21 is a Helm hook the release must create and clean up).
+- `batch/jobs` — `get`/`list`/`watch`/`create`/`delete` (the Prisma migration Job from #21 is a Helm hook the release must create and clean up). **Superseded by ADR-0020:** `patch` is required — Helm 4 applies hook resources with server-side apply, so a create-only grant cannot install the hook.
 - No `pods/exec`, no `pods/log`. Restore drills and ad-hoc `psql` are human actions over the tailnet.
 
 ### Acceptance (replaces #20's bucket-based criteria)

@@ -3,7 +3,9 @@
 # Namespaced to `frontdesk` - this Role grants nothing outside it.
 # ADR-0015 documents this Role's full verb-by-verb surface; ADR-0016 added
 # the statefulsets/persistentvolumeclaims/cronjobs/jobs rules below for
-# Postgres (#20).
+# Postgres (#20); ADR-0020 added `patch` to jobs for Helm 4's server-side
+# apply of hooks. This surface is a function of the Helm major version -
+# deploy.yml pins it for that reason.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -52,7 +54,12 @@ rules:
     resources: ["cronjobs"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   - apiGroups: ["batch"]
-    # No `patch`: the Prisma migration Job (#21) is a Helm hook the
-    # release creates and cleans up, not something CI edits in place.
+    # `patch` is what "create" costs under Helm 4 (ADR-0020, superseding
+    # ADR-0016's "no patch" clause): Helm 4 applies hook resources with
+    # server-side apply, which the API server authorizes as `patch` even
+    # when the object does not exist yet - so a create-only grant cannot
+    # install the frontdesk-db-migrate hook at all. Still no `update`:
+    # SSA needs only `patch`, and full-object `update` is the verb that
+    # would let CI rewrite a Job it did not render.
     resources: ["jobs"]
-    verbs: ["get", "list", "watch", "create", "delete"]
+    verbs: ["get", "list", "watch", "create", "patch", "delete"]
