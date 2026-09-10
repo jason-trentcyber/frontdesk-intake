@@ -67,14 +67,23 @@ jobs:
         uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
 
       # No registry login, no push (deploy.yml does the real build+push
-      # after merge). This only proves the Dockerfile still builds -
-      # context is the repo root, same as deploy.yml (web/Dockerfile is a
-      # pnpm-workspace build, see its header comment).
+      # after merge). This only proves the Dockerfiles still build -
+      # context is the repo root for both, same as deploy.yml (each is a
+      # pnpm-workspace build, see their header comments). Both images
+      # deploy.yml builds are covered here: without the db step, a broken
+      # db/Dockerfile would pass CI and fail on main at deploy time.
       - name: Build web image (no push)
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           file: web/Dockerfile
+          push: false
+
+      - name: Build db image (no push)
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: db/Dockerfile
           push: false
 
   db:
