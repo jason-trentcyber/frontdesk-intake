@@ -1,5 +1,7 @@
 """ADR-0006: no file outside worker/llm/ may reference 'openrouter' or
-'bedrock' - a grep test enforces it.
+'bedrock' - a grep test enforces it. The ADR itself now records that this
+has always meant application code, not the tests that exercise the
+adapters - see its "Switch-proof" section.
 
 Scope: frontdesk_worker/ (the runtime package) only, not tests/ and not
 llm/ itself. The brief's own wording ("this file itself and the ADRs are

@@ -76,7 +76,14 @@ def load_settings(source: dict[str, str] | None = None) -> Settings:
         queue_provider=queue_provider,
         llm_provider=llm_provider,
         llm_model=env.get("LLM_MODEL", "haiku"),
-        visibility_timeout_seconds=int(env.get("VISIBILITY_TIMEOUT_SECONDS", "30")),
+        # 15s, matching consumer.py's DEFAULT_VISIBILITY_TIMEOUT_SECONDS and
+        # the chart's worker.visibilityTimeoutSeconds - see consumer.py's
+        # header docstring for why 15s was chosen over pgmq/SQS's usual
+        # default. All three must agree; this is the one env fallback of
+        # the three that isn't sourced from consumer.py's constant directly
+        # because __main__.py always passes settings.visibility_timeout_seconds
+        # through explicitly rather than relying on run_forever()'s default.
+        visibility_timeout_seconds=int(env.get("VISIBILITY_TIMEOUT_SECONDS", "15")),
         max_delivery_attempts=int(env.get("MAX_DELIVERY_ATTEMPTS", "5")),
         global_daily_spend_ceiling_usd=float(env.get("GLOBAL_DAILY_SPEND_CEILING_USD", "0.30")),
         aws_region=env.get("AWS_REGION") or None,
