@@ -75,10 +75,9 @@ reads a provider's API key (`llm.get_provider()` does that).
 ## Rejected
 
 - **Keep the literal rule and move the SQS `boto3` usage inside `worker/llm/`.**
-  The review agent offered this as an alternative. It would put a queue adapter
-  in the LLM package to satisfy a grep — inverting ADR-0004's and ADR-0006's
-  boundaries to preserve a string match. The directory structure should follow
-  the architecture, not the test.
+  This would put a queue adapter in the LLM package to satisfy a grep —
+  inverting ADR-0004's and ADR-0006's boundaries to preserve a string match. The
+  directory structure should follow the architecture, not the test.
 - **Keep the literal rule and allow-list `queue/sqs.py`.** An allow-list entry
   is a permanent hole in the test aimed at one file, and the next reader cannot
   tell whether it was reasoned or expedient. Narrowing the rule to what it means
@@ -86,9 +85,8 @@ reads a provider's API key (`llm.get_provider()` does that).
 - **Include `worker/tests/` in the grep with per-file exemptions.** Every adapter
   test would need an exemption, which is the rule not applying rather than the
   rule with exceptions.
-- **Say nothing and leave the clarification in the test's docstring**, which is
-  what the first attempt on PR #99 did (at Hermes's instruction — the brief said
-  "add one sentence to ADR-0006", which is editing decided text in place). The
-  review agent blocked it, correctly: a rule that lives in two places drifts, and
-  the enforcing test is the worst place to record why the rule is narrower than
-  the ADR says.
+- **Amend ADR-0006's sentence in place, or leave the clarification only in the
+  enforcing test's docstring.** Editing a decided ADR's decision text is
+  forbidden by `docs/adr/README.md`. And a rule recorded only inside the test
+  that enforces it is the worst of both: the ADR keeps saying something the code
+  does not do, and the two drift with nothing to reconcile them.
