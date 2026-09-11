@@ -26,6 +26,10 @@ Cross-check the diff against the ADR map in `CLAUDE.md` for every directory touc
 
 Any diff touching `worker/prompts/` or retrieval code (`worker/` ingestion/retrieval per ADR-0005) needs evidence in the PR (body, or a checked-in `evals/baseline.json` diff, or CI eval-gate output referenced) that `make eval` was run and did not drop recall@5 or classification accuracy below baseline. No such evidence: blocking. `evals/baseline.json` itself may only be raised by a human commit — flag if an agent-authored PR modifies it.
 
+**Exception while the gate does not exist.** The gate needs `evals/baseline.json` and a non-empty `evals/golden/`; both arrive with #30, which is still open. Until then `make eval` cannot run, and demanding its output blocks every PR that touches retrieval code — including the ones that build the thing the gate is meant to measure. So: **check first.** If `evals/baseline.json` is absent or `evals/golden/` contains no `*.jsonl`, the eval gate is unavailable and its absence is not a finding. You have `Read`, `Grep` and `Glob` — verify it rather than assuming either way.
+
+In that case the requirement is a statement, not a measurement: the PR must say plainly that the gate was unavailable and why. Fabricated recall@5 or accuracy numbers, or silence, are both still blocking — ADR-0023 §3 states the obligation this way ("or, if #30 has still not landed by then, say plainly in the PR body that the eval gate was unavailable and why"), and the review job's prompt is built from the diff alone (`review-agent.yml`, "Build review prompt"), so look for that statement in the diff's own comments and docs rather than expecting to see the PR description. This exception expires the moment #30 commits a baseline; nothing needs to change here when it does.
+
 ## 6. Obvious injection, SSRF, path traversal — blocking
 
 Unparameterized SQL string concatenation, `fetch`/`axios`/`requests` calls built from user-controlled URLs or hosts without an allowlist, filesystem paths built from user input without normalization/containment checks, shelling out with unsanitized input. Report the specific line and the untrusted source that reaches it.
