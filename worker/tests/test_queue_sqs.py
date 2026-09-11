@@ -95,3 +95,44 @@ async def test_dead_letter_moves_the_message_to_the_dlq(
 async def test_dead_letter_without_a_cached_body_raises(sqs_queue: SqsQueue) -> None:
     with pytest.raises(RuntimeError, match="no cached body"):
         await sqs_queue.dead_letter("not-a-real-handle")
+
+
+# Not LocalStack tests: LocalStack will never return a malformed message, so
+# these construct an SqsQueue directly and monkeypatch receive_message on its
+# boto3 client instead. Constructing a boto3 client performs no network I/O
+# and validates no credentials, so these run everywhere - unlike the tests
+# above, they aren't skipped when AWS_ENDPOINT_URL/AWS_REGION are unset.
+def _sqs_queue_with_dummy_args() -> SqsQueue:
+    return SqsQueue(
+        queue_url="https://sqs.us-east-1.amazonaws.com/000000000000/dummy-queue",
+        dlq_url="https://sqs.us-east-1.amazonaws.com/000000000000/dummy-dlq",
+        region="us-east-1",
+    )
+
+
+async def test_receive_raises_when_a_message_has_a_body_but_no_receipt_handle(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    queue = _sqs_queue_with_dummy_args()
+    monkeypatch.setattr(
+        queue._client,
+        "receive_message",
+        lambda **kwargs: {"Messages": [{"Body": '{"orgId": "org-1", "requestId": "req-1"}'}]},
+    )
+
+    with pytest.raises(RuntimeError, match="ReceiptHandle or Body"):
+        await queue.receive(visibility_timeout=10)
+
+
+async def test_receive_raises_when_a_message_has_a_receipt_handle_but_no_body(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    queue = _sqs_queue_with_dummy_args()
+    monkeypatch.setattr(
+        queue._client,
+        "receive_message",
+        lambda **kwargs: {"Messages": [{"ReceiptHandle": "handle-1"}]},
+    )
+
+    with pytest.raises(RuntimeError, match="ReceiptHandle or Body"):
+        await queue.receive(visibility_timeout=10)
