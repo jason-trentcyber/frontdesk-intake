@@ -1,6 +1,8 @@
 # ADR-0006: OpenRouter is the live provider; the Bedrock adapter is switch-proven
 
-Status: decided 2026-09-07
+Status: decided 2026-09-07; the grep test's scope (which files, which
+strings) is clarified and narrowed by ADR-0024. The decision below is
+unchanged.
 
 ## Context
 Jason wants a real production LLM with defensible configuration, without opening an AWS account in v1. The Bedrock path must be demonstrably a configuration change, not a promise.

@@ -95,6 +95,13 @@ jobs:
           file: api/Dockerfile
           push: false
 
+      - name: Build worker image (no push)
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: worker/Dockerfile
+          push: false
+
   db:
     runs-on: ubuntu-latest
     # Chart-pinned image (deploy/chart/values.yaml postgres.image.digest,
@@ -249,7 +256,133 @@ jobs:
             exit 1
           fi
 
+  # worker/'s Postgres-backed tests (for_org(), the pgmq adapter, spend.py -
+  # docs/adr/0023-worker-runtime-shape.md §1 calls the for_org() tests "the
+  # point of" db.py) need the same service container as the db/ and api/
+  # jobs above; the sqs adapter tests need the same LocalStack container as
+  # api's job, for the same reason api's job has both - one adapter each.
+  # worker/'s Postgres tests create their own org/request/draft rows (not
+  # the seed data), so this job runs migrations but not `pnpm seed`.
   python:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: ghcr.io/jason-trentcyber/frontdesk-postgres@sha256:6b99f66e5de740b1e5cff5726a85e8d06e63d4100bcbdacd74378b22bdb19f83
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: frontdesk
+          # Throwaway CI values, plain strings - not secrets.
+          FRONTDESK_PASSWORD: frontdesk
+          FRONTDESK_APP_PASSWORD: frontdesk_app
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d frontdesk"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      localstack:
+        image: localstack/localstack:4.14.0
+        env:
+          SERVICES: sqs
+        ports:
+          - 4566:4566
+        options: >-
+          --health-cmd "curl -f http://localhost:4566/_localstack/health"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://frontdesk:frontdesk@localhost:5432/frontdesk
+      DATABASE_APP_URL: postgresql://frontdesk_app:frontdesk_app@localhost:5432/frontdesk
+      MIGRATE_DATABASE_URL: postgresql://frontdesk:frontdesk@localhost:5432/frontdesk
+      AWS_ENDPOINT_URL: http://localhost:4566
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install Node dependencies
+        run: |
+          pnpm --version
+          pnpm install --frozen-lockfile
+
+      # worker/'s tests read the schema this creates (orgs, requests,
+      # drafts); they insert their own rows rather than depending on
+      # `pnpm seed`'s fixtures, so seeding isn't needed here.
+      - name: Migrate
+        run: pnpm --filter @frontdesk/db migrate
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
+
+      - name: Install Python dependencies
+        working-directory: worker
+        run: |
+          uv --version
+          uv sync --frozen
+
+      - name: Ruff check
+        working-directory: worker
+        run: |
+          uv run ruff --version
+          uv run ruff check .
+
+      - name: Ruff format check
+        working-directory: worker
+        run: |
+          uv run ruff --version
+          uv run ruff format --check .
+
+      - name: Pyright
+        working-directory: worker
+        run: |
+          uv run pyright --version
+          uv run pyright
+
+      # Same reasoning as api's "Test (and assert nothing skipped)" step:
+      # worker/'s tests gate themselves on DATABASE_APP_URL/AWS_ENDPOINT_URL
+      # so they can run on a laptop without services, and that same guard
+      # would let the whole suite silently skip here if a service container
+      # or env var went missing. pytest's built-in JUnit XML reporter
+      # (no extra plugin) carries the skip count.
+      - name: Pytest (and assert nothing skipped)
+        working-directory: worker
+        run: |
+          uv run pytest --version
+          uv run pytest --junit-xml=/tmp/worker-tests.xml
+          skipped=$(python3 -c "
+          import xml.etree.ElementTree as ET
+          root = ET.parse('/tmp/worker-tests.xml').getroot()
+          print(sum(int(s.get('skipped', 0)) for s in root.iter('testsuite')))
+          ")
+          echo "skipped=$skipped"
+          if [ "$skipped" != "0" ]; then
+            echo "::error::$skipped worker/ test(s) skipped - a service container or env var is missing" >&2
+            exit 1
+          fi
+
+  # ADR-0006's switch-proof, named as its own check (not just folded into
+  # `python` above, even though that job's full suite already covers this
+  # file too) so a reviewer sees "provider-parity" pass or fail directly in
+  # the PR's checks list. Deliberately has no service containers: the
+  # normalized-Completion comparison is fixture-only (respx, botocore
+  # Stubber) - no network, no API key, per ADR-0006's switch-proof.
+  provider-parity:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -268,25 +401,10 @@ jobs:
           uv --version
           uv sync --frozen
 
-      - name: Ruff check
-        run: |
-          uv run ruff --version
-          uv run ruff check .
-
-      - name: Ruff format check
-        run: |
-          uv run ruff --version
-          uv run ruff format --check .
-
-      - name: Pyright
-        run: |
-          uv run pyright --version
-          uv run pyright
-
-      - name: Pytest
+      - name: Provider parity
         run: |
           uv run pytest --version
-          uv run pytest
+          uv run pytest tests/test_provider_parity.py -v
 
   gitleaks:
     runs-on: ubuntu-latest

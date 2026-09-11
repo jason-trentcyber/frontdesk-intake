@@ -1,0 +1,15 @@
+# Alias -> per-provider model id (ADR-0006). LLM_MODEL=<alias> resolves
+# here; no other file may hard-code a provider's model id string.
+#
+# pricing_usd_per_million_tokens is the worker's own estimate for the spend
+# controls (ADR-0023 §5 layers 2/3) - it is not billing-accurate, OpenRouter
+# and Bedrock meter actual spend independently. Figures below are Anthropic's
+# published Claude Haiku 4.5 list price as of this PR (single source for
+# both providers since OpenRouter passes Anthropic's price through); update
+# this file if pricing changes rather than hard-coding it elsewhere.
+haiku:
+  openrouter: anthropic/claude-haiku-4.5
+  bedrock: anthropic.claude-haiku-4-5-20251001-v1:0
+  pricing_usd_per_million_tokens:
+    input: 1.00
+    output: 5.00

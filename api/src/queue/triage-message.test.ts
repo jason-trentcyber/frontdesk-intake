@@ -30,4 +30,13 @@ describe("assertTriageMessage", () => {
   ])("rejects %s", (_label, value) => {
     expect(() => assertTriageMessage(value)).toThrow(/orgId is required/);
   });
+
+  // .strict(): without it, an extra property is silently stripped and the
+  // (now-narrower) object reaches queue.send() - but assertTriageMessage
+  // asserts on the *original* value, so a hand-shaped or version-skewed
+  // payload with an extra key would go out unmodified with no error at all.
+  it("rejects a message with an extra property", () => {
+    const value = { orgId: "org-1", requestId: "req-1", extra: "nope" };
+    expect(() => assertTriageMessage(value)).toThrow(/unrecognized properties/);
+  });
 });

@@ -23,6 +23,7 @@ env:
   IMAGE: ghcr.io/jason-trentcyber/frontdesk-web
   DB_IMAGE: ghcr.io/jason-trentcyber/frontdesk-db
   API_IMAGE: ghcr.io/jason-trentcyber/frontdesk-api
+  WORKER_IMAGE: ghcr.io/jason-trentcyber/frontdesk-worker
 
 jobs:
   build:
@@ -36,6 +37,7 @@ jobs:
       digest: ${{ steps.build.outputs.digest }}
       db_digest: ${{ steps.build-db.outputs.digest }}
       api_digest: ${{ steps.build-api.outputs.digest }}
+      worker_digest: ${{ steps.build-worker.outputs.digest }}
       skip: ${{ steps.changes.outputs.skip }}
       short_sha: ${{ steps.vars.outputs.short_sha }}
     steps:
@@ -88,9 +90,10 @@ jobs:
             ${{ env.IMAGE }}:sha-${{ steps.vars.outputs.short_sha }}
             ${{ env.IMAGE }}:latest
 
-      # Three build-push steps in one job, not a matrix: a matrix needs
-      # dynamic per-image outputs (digest, db_digest, api_digest) wired
-      # back together afterward, which buys nothing at three images.
+      # Four build-push steps in one job, not a matrix: a matrix needs
+      # dynamic per-image outputs (digest, db_digest, api_digest,
+      # worker_digest) wired back together afterward, which buys nothing at
+      # four images.
       - name: Build and push db
         if: steps.changes.outputs.skip != 'true'
         id: build-db
@@ -114,6 +117,18 @@ jobs:
           tags: |
             ${{ env.API_IMAGE }}:sha-${{ steps.vars.outputs.short_sha }}
             ${{ env.API_IMAGE }}:latest
+
+      - name: Build and push worker
+        if: steps.changes.outputs.skip != 'true'
+        id: build-worker
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: worker/Dockerfile
+          push: true
+          tags: |
+            ${{ env.WORKER_IMAGE }}:sha-${{ steps.vars.outputs.short_sha }}
+            ${{ env.WORKER_IMAGE }}:latest
 
   deploy:
     needs: build
@@ -164,6 +179,7 @@ jobs:
             --set web.image.digest=${{ needs.build.outputs.digest }} \
             --set db.image.digest=${{ needs.build.outputs.db_digest }} \
             --set api.image.digest=${{ needs.build.outputs.api_digest }} \
+            --set worker.image.digest=${{ needs.build.outputs.worker_digest }} \
             --wait --timeout 5m --history-max 5
 
       - name: Smoke test
