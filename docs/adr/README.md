@@ -25,3 +25,4 @@ Format: context, decision, consequences, alternatives rejected. One file per dec
 | 0019 | `frontdesk-db-migrate` runs `post-install,pre-upgrade` (a `pre-install` hook deadlocks against the Postgres StatefulSet it needs); amends 0018 | decided |
 | 0020 | deployer Role needs `patch` on `batch/jobs` (Helm 4 applies hooks server-side); Helm version pinned in CI; amends 0016 | decided, applied |
 | 0021 | `web/` uses `@frontdesk/db` in-process; `api/` serves external integrations (F3) and owns the queue producer | decided |
+| 0022 | `api/` creates the pgmq queue at startup as `frontdesk_app` (the owner role has no `pgmq` privileges, by design); amends 0004 and 0018 | decided |

@@ -22,6 +22,7 @@ permissions:
 env:
   IMAGE: ghcr.io/jason-trentcyber/frontdesk-web
   DB_IMAGE: ghcr.io/jason-trentcyber/frontdesk-db
+  API_IMAGE: ghcr.io/jason-trentcyber/frontdesk-api
 
 jobs:
   build:
@@ -34,6 +35,7 @@ jobs:
     outputs:
       digest: ${{ steps.build.outputs.digest }}
       db_digest: ${{ steps.build-db.outputs.digest }}
+      api_digest: ${{ steps.build-api.outputs.digest }}
       skip: ${{ steps.changes.outputs.skip }}
       short_sha: ${{ steps.vars.outputs.short_sha }}
     steps:
@@ -86,9 +88,9 @@ jobs:
             ${{ env.IMAGE }}:sha-${{ steps.vars.outputs.short_sha }}
             ${{ env.IMAGE }}:latest
 
-      # Two build-push steps in one job, not a matrix: a matrix needs
-      # dynamic per-image outputs (digest, db_digest) wired back together
-      # afterward, which buys nothing at two images.
+      # Three build-push steps in one job, not a matrix: a matrix needs
+      # dynamic per-image outputs (digest, db_digest, api_digest) wired
+      # back together afterward, which buys nothing at three images.
       - name: Build and push db
         if: steps.changes.outputs.skip != 'true'
         id: build-db
@@ -100,6 +102,18 @@ jobs:
           tags: |
             ${{ env.DB_IMAGE }}:sha-${{ steps.vars.outputs.short_sha }}
             ${{ env.DB_IMAGE }}:latest
+
+      - name: Build and push api
+        if: steps.changes.outputs.skip != 'true'
+        id: build-api
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: api/Dockerfile
+          push: true
+          tags: |
+            ${{ env.API_IMAGE }}:sha-${{ steps.vars.outputs.short_sha }}
+            ${{ env.API_IMAGE }}:latest
 
   deploy:
     needs: build
@@ -149,6 +163,7 @@ jobs:
             -f deploy/chart/values-hetzner.yaml \
             --set web.image.digest=${{ needs.build.outputs.digest }} \
             --set db.image.digest=${{ needs.build.outputs.db_digest }} \
+            --set api.image.digest=${{ needs.build.outputs.api_digest }} \
             --wait --timeout 5m --history-max 5
 
       - name: Smoke test
