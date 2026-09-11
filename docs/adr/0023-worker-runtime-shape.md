@@ -5,6 +5,15 @@ Status: decided 2026-09-11
 Amends ADR-0005 (embedding runtime), ADR-0004 (queue contract across languages),
 and ADR-0006 (spend controls made concrete). Supersedes no decision text.
 
+Evidence notes added 2026-09-11 in response to the review agent on PR #97
+(rubric 5 and rubric 7): the reproduction commands in Context, and the
+"what the parity check does NOT establish" paragraph in §3. Both record how the
+numbers were obtained and what they do not prove. Neither reverses, narrows, or
+extends a decision made above, so this is an annotation rather than a
+superseding ADR; if a future reader disagrees with that reading, the decisions
+themselves are the five numbered clauses and they are unchanged from the merged
+version (commit 305de11).
+
 ## Context
 
 `worker/` is still `frontdesk_worker/__init__.py` and a version test. Issue #23
@@ -31,6 +40,24 @@ have had to answer them by picking.
 The node is the binding constraint on two of them. Measured on the live node
 (`frontdesk`, cx23): 3819 MB total, 1521 MB used, **2298 MB available**. Current
 pod limits sum to 2922Mi = 76 % of allocatable.
+
+Those figures are reproducible, and should be re-derived rather than trusted when
+this ADR is next read (2026-09-11, release revision 16):
+
+```
+ssh -i ~/.ssh/frontdesk-node root@167.233.178.242 'free -m'
+kubectl --kubeconfig=infra/hetzner/kubeconfig describe node frontdesk \
+  | grep -A8 'Allocated resources'
+kubectl --kubeconfig=infra/hetzner/kubeconfig top nodes
+```
+
+The embedding measurements in §3 come from container probes on the VPS, each run
+as `docker run --rm --cpus=2 python:3.12-slim`, taking peak RSS from
+`resource.getrusage(RUSAGE_SELF).ru_maxrss` and encoding 32 chunks of
+representative text. The parity figures come from encoding the same three strings
+with both implementations and comparing the vectors directly. The probe scripts
+are reproduced in the #23 implementation PR rather than committed here, since
+they are one-off measurements and not a maintained test.
 
 ## Decision
 
@@ -120,6 +147,18 @@ twenty lines (tokenize, run the session, take the CLS token, L2-normalise) and
 we own the pooling logic. That code is covered by a parity test asserting the
 vectors match recorded reference values, so a pooling mistake fails CI rather
 than quietly degrading retrieval.
+
+**What the parity check above does NOT establish.** Three strings compared
+vector-to-vector proves the runtime swap is faithful; it says nothing about
+retrieval quality on real queries, which is what ADR-0008's eval gate measures.
+That gate cannot run yet — `evals/golden/` is an empty directory and the golden
+dataset is #30. So this ADR's evidence is deliberately narrow, and the
+obligation carries forward: **the PR that lands the ONNX embedding path must run
+`make eval` and report recall@5 and classification accuracy against
+`evals/baseline.json`**, or, if #30 has still not landed by then, say plainly in
+the PR body that the eval gate was unavailable and why. A runtime swap that is
+bit-identical on three inputs is not licence to skip the measurement that
+matters.
 
 ### 4. One worker process
 
