@@ -477,6 +477,11 @@ jobs:
             # this; verified locally that -strict alone fails on it and
             # this flag is what fixes it.
             kubeconform -kubernetes-version 1.36.0 -summary -strict -skip SealedSecret "/tmp/rendered-$values.yaml"
+            # kubeconform validates each document on its own, so a pod
+            # template naming a ServiceAccount that no template emits passes
+            # it and fails at deploy time instead (#99's worker). See the
+            # script header for why lint/template/kubeconform all miss it.
+            ./deploy/chart/check-manifest-refs.sh "/tmp/rendered-$values.yaml"
           done
 
       # #16: lint/template deploy/bootstrap/values/*.yaml against their
