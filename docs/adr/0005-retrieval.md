@@ -1,8 +1,10 @@
 # ADR-0005: Hybrid retrieval on pgvector with in-process embeddings
 
 Status: decided 2026-09-07; the embedding *runtime* (how the model is executed)
-is ONNX Runtime rather than sentence-transformers/torch per ADR-0023. The model,
-dimensions, chunking, index parameters and query plan below are unchanged.
+is ONNX Runtime rather than sentence-transformers/torch per ADR-0023, and the
+`reindex` job's image and the embedding batch size are fixed by ADR-0025. The
+model, dimensions, chunking, index parameters and query plan below are
+unchanged.
 
 ## Decision
 - Embedding model: `BAAI/bge-small-en-v1.5` (384 dims) run in the Python worker via `sentence-transformers` on CPU. ~130 MB, ~20 ms per chunk on 4 vCPU.
