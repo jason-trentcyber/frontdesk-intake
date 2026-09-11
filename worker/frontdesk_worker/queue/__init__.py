@@ -14,6 +14,10 @@ T = TypeVar("T")
 
 QUEUE_NAME = "frontdesk_triage"
 
+# ADR-0025 §1: the ingestion trigger queue, mirroring
+# api/src/queue/index.ts's INGEST_QUEUE_NAME exactly.
+INGEST_QUEUE_NAME = "frontdesk_ingest"
+
 
 @dataclass(frozen=True)
 class QueueMessage:

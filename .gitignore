@@ -24,6 +24,10 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 
+# fetched by worker/scripts/fetch_model.py (ADR-0023 Consequences), baked
+# into the image by worker/Dockerfile - not committed, ~130 MB
+worker/models/
+
 # terraform
 .terraform/
 *.tfstate

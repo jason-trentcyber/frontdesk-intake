@@ -2,7 +2,7 @@
 # worker/Dockerfile .) - not because worker/ depends on any other
 # workspace package (it's a standalone uv project, no pnpm workspace
 # involvement), but because frontdesk_worker/contracts.py resolves the
-# committed contract file by a path relative to its own location
+# committed contract files by a path relative to its own location
 # (worker/frontdesk_worker/contracts.py -> ../../docs/contracts/...), so
 # the image has to mirror the repo's own worker/ + docs/contracts/ layout
 # for that lookup to still work at runtime.
@@ -28,6 +28,18 @@ COPY worker/frontdesk_worker ./frontdesk_worker
 COPY worker/llm ./llm
 RUN uv sync --frozen --no-dev
 
+# ADR-0023 Consequences: "the worker image must ship the ONNX model file
+# rather than downloading it at startup ... Bake the model into the image,
+# pinned by revision." This stage has network access (a normal, expected
+# part of a Docker build - every other image's deps step does too); only
+# the RUNNING container in the runner stage below must not reach the
+# network. worker/scripts/fetch_model.py pins the exact HF revision, so a
+# rebuild months from now fetches the same weights, not whatever `main`
+# has drifted to.
+FROM builder AS model
+COPY worker/scripts ./scripts
+RUN uv run --no-dev python scripts/fetch_model.py
+
 FROM base AS runner
 WORKDIR /app/worker
 ENV PATH="/app/worker/.venv/bin:$PATH" \
@@ -37,6 +49,7 @@ ENV PATH="/app/worker/.venv/bin:$PATH" \
 COPY --from=builder --chown=1001:1001 /app/worker/.venv ./.venv
 COPY --from=builder --chown=1001:1001 /app/worker/frontdesk_worker ./frontdesk_worker
 COPY --from=builder --chown=1001:1001 /app/worker/llm ./llm
+COPY --from=model --chown=1001:1001 /app/worker/models ./models
 COPY --chown=1001:1001 docs/contracts /app/docs/contracts
 
 # Numeric, not a name: kubelet can't statically resolve a named user

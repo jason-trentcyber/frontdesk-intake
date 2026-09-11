@@ -32,6 +32,12 @@ const rawEnvSchema = z.object({
   AWS_REGION: z.string().optional(),
   SQS_QUEUE_URL: z.string().optional(),
   SQS_DLQ_URL: z.string().optional(),
+  // The ingest queue's own pair (ADR-0025 §1) - a second logical queue
+  // under QUEUE_PROVIDER=sqs needs a second SQS URL pair; two queues can't
+  // share one. Unset in production (pgmq is the deployed provider), same
+  // as SQS_QUEUE_URL/SQS_DLQ_URL above.
+  INGEST_SQS_QUEUE_URL: z.string().optional(),
+  INGEST_SQS_DLQ_URL: z.string().optional(),
 });
 
 export type Env = z.infer<typeof rawEnvSchema> & { databaseUrl: string };
@@ -49,7 +55,13 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   }
 
   if (env.QUEUE_PROVIDER === "sqs") {
-    for (const key of ["AWS_REGION", "SQS_QUEUE_URL", "SQS_DLQ_URL"] as const) {
+    for (const key of [
+      "AWS_REGION",
+      "SQS_QUEUE_URL",
+      "SQS_DLQ_URL",
+      "INGEST_SQS_QUEUE_URL",
+      "INGEST_SQS_DLQ_URL",
+    ] as const) {
       if (!env[key]) {
         throw new Error(`${key} is required when QUEUE_PROVIDER=sqs`);
       }

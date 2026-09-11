@@ -1,9 +1,12 @@
-"""Validates queue messages against docs/contracts/triage-message.schema.json (#23 §2).
+"""Validates queue messages against the committed contract files in
+docs/contracts/ (ADR-0023 §2, ADR-0025 §1).
 
-The committed JSON file is generated from api/'s triageMessageSchema
-(api/src/queue/index.ts, api/src/queue/contract.test.ts asserts no drift) -
-this module validates against that file directly, never a hand-written
-Python copy, so the two languages cannot silently diverge.
+The committed JSON files are generated from api/'s triageMessageSchema and
+ingestMessageSchema (api/src/queue/index.ts,
+api/src/queue/triage-message-schema.test.ts and
+api/src/queue/ingest-message-schema.test.ts assert no drift) - this module
+validates against those files directly, never a hand-written Python copy,
+so the two languages cannot silently diverge.
 
 Validator: `jsonschema` - the obvious choice for validating against a
 standard (2020-12) JSON Schema document without hand-rolling the checks
@@ -18,22 +21,32 @@ from typing import Any
 import jsonschema
 
 # worker/frontdesk_worker/contracts.py -> repo root is three parents up.
-_CONTRACT_PATH = (
-    Path(__file__).resolve().parents[2] / "docs" / "contracts" / "triage-message.schema.json"
-)
+_CONTRACTS_DIR = Path(__file__).resolve().parents[2] / "docs" / "contracts"
+_TRIAGE_CONTRACT_PATH = _CONTRACTS_DIR / "triage-message.schema.json"
+_INGEST_CONTRACT_PATH = _CONTRACTS_DIR / "ingest-message.schema.json"
 
 
 class InvalidTriageMessage(Exception):
-    """Raised when a queue message fails the committed contract schema."""
+    """Raised when a queue message fails the committed triage contract schema."""
+
+
+class InvalidIngestMessage(Exception):
+    """Raised when a queue message fails the committed ingest contract schema."""
 
 
 @lru_cache(maxsize=1)
-def _schema() -> dict[str, Any]:
-    return json.loads(_CONTRACT_PATH.read_text())
+def _triage_schema() -> dict[str, Any]:
+    return json.loads(_TRIAGE_CONTRACT_PATH.read_text())
+
+
+@lru_cache(maxsize=1)
+def _ingest_schema() -> dict[str, Any]:
+    return json.loads(_INGEST_CONTRACT_PATH.read_text())
 
 
 def validate_triage_message(body: Any) -> dict[str, Any]:
-    """Validates `body` against the committed contract; returns it typed on success.
+    """Validates `body` against the committed triage contract; returns it
+    typed on success.
 
     Raises InvalidTriageMessage on failure. Callers must dead-letter on this
     exception rather than retry - a message that fails schema validation
@@ -41,7 +54,17 @@ def validate_triage_message(body: Any) -> dict[str, Any]:
     malformed body might otherwise smuggle across tenants.
     """
     try:
-        jsonschema.validate(body, _schema())
+        jsonschema.validate(body, _triage_schema())
     except jsonschema.ValidationError as exc:
         raise InvalidTriageMessage(str(exc.message)) from exc
+    return body
+
+
+def validate_ingest_message(body: Any) -> dict[str, Any]:
+    """Same contract as validate_triage_message, against the ingest schema
+    (ADR-0025 §1)."""
+    try:
+        jsonschema.validate(body, _ingest_schema())
+    except jsonschema.ValidationError as exc:
+        raise InvalidIngestMessage(str(exc.message)) from exc
     return body

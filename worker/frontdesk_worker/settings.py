@@ -42,6 +42,11 @@ class Settings:
     aws_endpoint_url: str | None
     sqs_queue_url: str | None
     sqs_dlq_url: str | None
+    # ADR-0025 §1: the ingest queue's own pair under QUEUE_PROVIDER=sqs -
+    # two logical queues can't share one SQS URL, mirroring
+    # api/src/env.ts's INGEST_SQS_QUEUE_URL/INGEST_SQS_DLQ_URL.
+    ingest_sqs_queue_url: str | None
+    ingest_sqs_dlq_url: str | None
 
 
 def load_settings(source: dict[str, str] | None = None) -> Settings:
@@ -67,7 +72,13 @@ def load_settings(source: dict[str, str] | None = None) -> Settings:
         )
 
     if queue_provider == "sqs":
-        for key in ("AWS_REGION", "SQS_QUEUE_URL", "SQS_DLQ_URL"):
+        for key in (
+            "AWS_REGION",
+            "SQS_QUEUE_URL",
+            "SQS_DLQ_URL",
+            "INGEST_SQS_QUEUE_URL",
+            "INGEST_SQS_DLQ_URL",
+        ):
             if not env.get(key):
                 raise InvalidSettings(f"{key} is required when QUEUE_PROVIDER=sqs")
 
@@ -85,9 +96,17 @@ def load_settings(source: dict[str, str] | None = None) -> Settings:
         # through explicitly rather than relying on run_forever()'s default.
         visibility_timeout_seconds=int(env.get("VISIBILITY_TIMEOUT_SECONDS", "15")),
         max_delivery_attempts=int(env.get("MAX_DELIVERY_ATTEMPTS", "5")),
-        global_daily_spend_ceiling_usd=float(env.get("GLOBAL_DAILY_SPEND_CEILING_USD", "0.30")),
+        # 1.00, matching deploy/chart/values.yaml's
+        # worker.globalDailySpendCeilingUsd (#100) - that value's comment
+        # has the full reasoning (orgs.daily_token_budget's default vs. the
+        # measured per-request cost). A local run and the cluster must
+        # agree on this default or the two silently disagree on when layer
+        # 3 (ADR-0023 §5) engages.
+        global_daily_spend_ceiling_usd=float(env.get("GLOBAL_DAILY_SPEND_CEILING_USD", "1.00")),
         aws_region=env.get("AWS_REGION") or None,
         aws_endpoint_url=env.get("AWS_ENDPOINT_URL") or None,
         sqs_queue_url=env.get("SQS_QUEUE_URL") or None,
         sqs_dlq_url=env.get("SQS_DLQ_URL") or None,
+        ingest_sqs_queue_url=env.get("INGEST_SQS_QUEUE_URL") or None,
+        ingest_sqs_dlq_url=env.get("INGEST_SQS_DLQ_URL") or None,
     )

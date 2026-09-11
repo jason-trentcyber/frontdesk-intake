@@ -29,6 +29,8 @@ def _settings(**overrides: object) -> Settings:
         "aws_endpoint_url": None,
         "sqs_queue_url": None,
         "sqs_dlq_url": None,
+        "ingest_sqs_queue_url": None,
+        "ingest_sqs_dlq_url": None,
     }
     base.update(overrides)
     return Settings(**base)  # type: ignore[arg-type]
