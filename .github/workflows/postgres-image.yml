@@ -13,6 +13,13 @@ name: postgres-image
 # exclusion list would have to be extended for every new doc added here;
 # an inclusion list fails closed, so a new build input that someone
 # forgets to add simply doesn't publish rather than silently shipping.
+#
+# This file is a trigger for pull_request but deliberately NOT for push:
+# editing the workflow changes how the image is built and tested, so a PR
+# must re-run the build to prove the change works - but it cannot change
+# the *contents* of an already-published tag, so on main it would only
+# ever reach the overwrite guard and fail. That is exactly how #95, the
+# first attempt at this fix, turned main red on its own merge commit.
 on:
   pull_request:
     paths:
@@ -24,7 +31,6 @@ on:
     paths:
       - deploy/postgres/Dockerfile
       - deploy/postgres/initdb/**
-      - .github/workflows/postgres-image.yml
 
 permissions:
   contents: read
