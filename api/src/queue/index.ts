@@ -31,13 +31,22 @@ export interface Queue<T> {
 // (worker/) is responsible for opening forOrg(orgId, ...) before
 // touching any tenant table.
 // Single source of truth for the wire shape (#23): docs/contracts/triage-message.schema.json
-// is generated from this schema via z.toJSONSchema() (see queue.contract.test.ts, which fails
-// the build if the committed file drifts). worker/ validates against the committed JSON file
-// directly, not a hand-written Python copy, so the two languages cannot silently diverge.
-export const triageMessageSchema = z.object({
-  orgId: z.string().min(1),
-  requestId: z.string().min(1),
-});
+// is generated from this schema via z.toJSONSchema() (see triage-message-schema.test.ts, which
+// fails the build if the committed file drifts). worker/ validates against the committed JSON
+// file directly, not a hand-written Python copy, so the two languages cannot silently diverge.
+// .strict(): without it, Zod's default "strip" mode accepts an object with
+// extra properties and silently drops them - so `assertTriageMessage`
+// (an assertion, not a parse) would let the original object, extras and
+// all, reach queue.send() unmodified, while the Python worker validates
+// the same received body against the committed JSON Schema and rejects it
+// for `additionalProperties: false`. Two languages agreeing on the wire
+// shape only means something if both sides actually enforce it.
+export const triageMessageSchema = z
+  .object({
+    orgId: z.string().min(1),
+    requestId: z.string().min(1),
+  })
+  .strict();
 
 export type TriageMessage = z.infer<typeof triageMessageSchema>;
 
@@ -56,6 +65,15 @@ export function assertTriageMessage(value: unknown): asserts value is TriageMess
     return;
   }
   const issues = result.error.issues;
+  // .strict()'s extra-property issue also has an empty path (it's about
+  // the object as a whole, not one field) - check for it by code, before
+  // the empty-path fallback below, so a message with a valid orgId and an
+  // extra key doesn't get misreported as missing orgId.
+  if (issues.some((issue) => issue.code === "unrecognized_keys")) {
+    throw new Error(
+      "TriageMessage has unrecognized properties - the queue has no RLS to enforce tenancy",
+    );
+  }
   // A root-level issue (value isn't an object at all, e.g. null/undefined)
   // has an empty path; treat it as touching every field, matching the old
   // `!m` check's precedence of failing on orgId first either way.

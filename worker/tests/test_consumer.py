@@ -1,3 +1,4 @@
+import asyncio
 from dataclasses import dataclass, field
 
 import asyncpg
@@ -167,3 +168,45 @@ async def test_the_real_pipeline_stub_raises_not_implemented() -> None:
 
     with pytest.raises(NotImplementedError):
         await run_triage_pipeline(None, None, "org-1", "req-1")  # type: ignore[arg-type]
+
+
+async def test_run_forever_stops_promptly_with_no_further_receives_after_shutdown() -> None:
+    """run_forever's loop condition (`while not shutdown.is_set()`) must be
+    re-checked before every receive(), not just once at startup - otherwise
+    SIGTERM (consumer.py's whole reason for the shutdown Event) would never
+    actually stop the loop. Sets shutdown from inside receive() itself, on
+    the Nth call, so the assertion on receive_calls proves no (N+1)th
+    receive happens once shutdown is set - not just that the coroutine
+    eventually returns.
+
+    No Postgres needed: receive() always returns an empty list, so
+    process_one() returns False before ever touching the pool - a sentinel
+    stands in for it, same as test_queue_create.py's pattern.
+    """
+    shutdown = asyncio.Event()
+    receive_calls = 0
+
+    queue = FakeQueue()
+
+    async def counting_receive(visibility_timeout: int, qty: int = 1) -> list[QueueMessage]:
+        nonlocal receive_calls
+        receive_calls += 1
+        if receive_calls >= 3:
+            shutdown.set()
+        return []
+
+    queue.receive = counting_receive  # type: ignore[method-assign]
+
+    # wait_for is the "returns promptly" assertion: a regression that drops
+    # the shutdown check would hang here instead of failing cleanly.
+    await asyncio.wait_for(
+        consumer.run_forever(
+            queue,
+            "not-a-real-pool",  # type: ignore[arg-type]
+            shutdown,
+            poll_interval_seconds=0.01,
+        ),
+        timeout=2.0,
+    )
+
+    assert receive_calls == 3
