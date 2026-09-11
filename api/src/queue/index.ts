@@ -89,3 +89,49 @@ export function assertTriageMessage(value: unknown): asserts value is TriageMess
 }
 
 export const QUEUE_NAME = "frontdesk_triage";
+
+// ADR-0025 §1: a second queue, not a second message shape on
+// frontdesk_triage - a discriminator would mean every consumer branches on
+// message shape, and relaxing additionalProperties: false on
+// triageMessageSchema is exactly what #23's review tightened against.
+export const INGEST_QUEUE_NAME = "frontdesk_ingest";
+
+// Generated into docs/contracts/ingest-message.schema.json exactly as
+// triageMessageSchema is (see ingest-message-schema.test.ts for the
+// byte-for-byte drift test). .strict() for the same reason given above
+// triageMessageSchema: without it a producer/consumer split is latent -
+// an extra property would be silently stripped by this schema but rejected
+// by the worker's validation against the committed JSON file.
+export const ingestMessageSchema = z
+  .object({
+    orgId: z.string().min(1),
+    documentId: z.string().min(1),
+  })
+  .strict();
+
+export type IngestMessage = z.infer<typeof ingestMessageSchema>;
+
+// Mirrors assertTriageMessage exactly, including its error-selection logic
+// (the .strict() unrecognized_keys check before the empty-path fallback -
+// see that function's comments for why both are needed).
+export function assertIngestMessage(value: unknown): asserts value is IngestMessage {
+  const result = ingestMessageSchema.safeParse(value);
+  if (result.success) {
+    return;
+  }
+  const issues = result.error.issues;
+  if (issues.some((issue) => issue.code === "unrecognized_keys")) {
+    throw new Error(
+      "IngestMessage has unrecognized properties - the queue has no RLS to enforce tenancy",
+    );
+  }
+  const touches = (field: string) =>
+    issues.some((issue) => issue.path.length === 0 || issue.path[0] === field);
+  if (touches("orgId")) {
+    throw new Error("IngestMessage.orgId is required - the queue has no RLS to enforce tenancy");
+  }
+  if (touches("documentId")) {
+    throw new Error("IngestMessage.documentId is required");
+  }
+  throw new Error("IngestMessage is invalid");
+}

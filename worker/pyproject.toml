@@ -9,6 +9,25 @@ dependencies = [
     "boto3>=1.35.0",
     "pyyaml>=6.0.2",
     "jsonschema>=4.23.0",
+    # ADR-0023 §3: ONNX Runtime, not torch.
+    "onnxruntime>=1.19.0",
+    "tokenizers>=0.20.0",
+    "numpy>=1.26.0",
+    # worker/scripts/fetch_model.py's own dependency (never imported by
+    # frontdesk_worker/ or llm/ at runtime - grep confirms it). Listed
+    # explicitly rather than left implicit: tokenizers itself already pulls
+    # it in transitively (`huggingface-hub<2.0,>=0.16.4` is one of
+    # tokenizers' own hard dependencies, checked against its release
+    # metadata), so there was no smaller runtime image to be had by
+    # isolating it into its own dependency group - that was tried and
+    # reverted once the transitive pull made it pointless.
+    "huggingface-hub>=0.25.0",
+    # ADR-0005: PDF text-layer extraction. Pure Python, no C extension, no
+    # mandatory dependency at all on Python >=3.11 (checked against 6.18.1's
+    # own metadata) - the smallest tree of the realistic options (pypdf vs
+    # pdfminer.six vs PyMuPDF); PyMuPDF was also ruled out on licensing
+    # (AGPL/commercial dual license, wrong fit for an Apache-2.0 repo).
+    "pypdf>=5.0.0",
 ]
 
 [dependency-groups]

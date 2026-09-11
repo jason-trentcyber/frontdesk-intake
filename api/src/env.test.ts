@@ -43,21 +43,26 @@ describe("loadEnv", () => {
     );
   });
 
-  it.each(["AWS_REGION", "SQS_QUEUE_URL", "SQS_DLQ_URL"])(
-    "requires %s when QUEUE_PROVIDER=sqs",
-    (missing) => {
-      const sqs: Record<string, string> = {
-        QUEUE_PROVIDER: "sqs",
-        PUBLIC_WEB_ORIGIN: "https://example.test",
-        DATABASE_URL: "x",
-        AWS_REGION: "us-east-1",
-        SQS_QUEUE_URL: "https://sqs/main",
-        SQS_DLQ_URL: "https://sqs/dlq",
-      };
-      delete sqs[missing];
-      expect(() => loadEnv(sqs)).toThrow(`${missing} is required when QUEUE_PROVIDER=sqs`);
-    },
-  );
+  it.each([
+    "AWS_REGION",
+    "SQS_QUEUE_URL",
+    "SQS_DLQ_URL",
+    "INGEST_SQS_QUEUE_URL",
+    "INGEST_SQS_DLQ_URL",
+  ])("requires %s when QUEUE_PROVIDER=sqs", (missing) => {
+    const sqs: Record<string, string> = {
+      QUEUE_PROVIDER: "sqs",
+      PUBLIC_WEB_ORIGIN: "https://example.test",
+      DATABASE_URL: "x",
+      AWS_REGION: "us-east-1",
+      SQS_QUEUE_URL: "https://sqs/main",
+      SQS_DLQ_URL: "https://sqs/dlq",
+      INGEST_SQS_QUEUE_URL: "https://sqs/ingest",
+      INGEST_SQS_DLQ_URL: "https://sqs/ingest-dlq",
+    };
+    delete sqs[missing];
+    expect(() => loadEnv(sqs)).toThrow(`${missing} is required when QUEUE_PROVIDER=sqs`);
+  });
 
   it("accepts a complete sqs config", () => {
     const env = loadEnv({
@@ -67,6 +72,8 @@ describe("loadEnv", () => {
       AWS_REGION: "us-east-1",
       SQS_QUEUE_URL: "https://sqs/main",
       SQS_DLQ_URL: "https://sqs/dlq",
+      INGEST_SQS_QUEUE_URL: "https://sqs/ingest",
+      INGEST_SQS_DLQ_URL: "https://sqs/ingest-dlq",
     });
     expect(env.QUEUE_PROVIDER).toBe("sqs");
   });

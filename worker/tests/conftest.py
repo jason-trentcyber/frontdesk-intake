@@ -14,6 +14,7 @@ table's owning role. Tests that exercise for_org()/spend.py itself always go
 through the frontdesk_app pool - that's the boundary under test.
 """
 
+import hashlib
 import os
 import uuid
 from collections.abc import AsyncGenerator
@@ -143,10 +144,43 @@ class OrgFactory:
                 created_at,
             )
 
+    async def make_document(
+        self,
+        org_id: str,
+        *,
+        title: str = "test doc",
+        filename: str = "test.md",
+        mime: str = "text/markdown",
+        raw: bytes = b"# Test\n\nHello world.",
+        status: str = "pending",
+    ) -> str:
+        # sha256 is part of documents_org_id_sha256_unique - vary `raw` per
+        # call within a test if more than one document is needed.
+        sha256 = hashlib.sha256(raw).hexdigest()
+        row = await self._conn.fetchrow(
+            """
+            insert into documents (org_id, title, filename, mime, sha256, raw, status)
+            values ($1, $2, $3, $4, $5, $6, $7)
+            returning id
+            """,
+            org_id,
+            title,
+            filename,
+            mime,
+            sha256,
+            raw,
+            status,
+        )
+        assert row is not None
+        return str(row["id"])
+
     async def cleanup(self) -> None:
         for org_id in self._org_ids:
             await self._conn.execute("delete from drafts where org_id = $1", org_id)
             await self._conn.execute("delete from requests where org_id = $1", org_id)
+            # chunks cascade off documents (ON DELETE CASCADE) - no separate
+            # delete needed.
+            await self._conn.execute("delete from documents where org_id = $1", org_id)
             await self._conn.execute("delete from orgs where id = $1", org_id)
 
 
