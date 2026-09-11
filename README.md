@@ -29,7 +29,11 @@ _Table pending (M4, #43): OpenRouter vs Bedrock vs Hetzner GPU vs Ollama at the 
 
 ## Switch to Bedrock
 
-_Five lines, pending `worker/llm/` (M3, #32)._
+1. Set `LLM_PROVIDER=bedrock` in the worker's values (never as a live edit — CLAUDE.md).
+2. Set `AWS_REGION` to the target region.
+3. Supply AWS credentials — IRSA in EKS, or `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` env elsewhere.
+4. `LLM_MODEL` stays the same alias; `worker/llm/models.yaml` resolves it to the Bedrock model id.
+5. Redeploy. `worker/llm/`'s `provider-parity` CI job already proves both adapters produce an identical normalized `Completion` for the same input.
 
 ## Run locally
 

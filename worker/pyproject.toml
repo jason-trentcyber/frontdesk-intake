@@ -3,20 +3,48 @@ name = "frontdesk-worker"
 version = "0.0.0"
 description = "frontdesk triage pipeline: ingestion, retrieval, LLM + queue adapters"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "asyncpg>=0.30.0",
+    "httpx>=0.28.0",
+    "boto3>=1.35.0",
+    "pyyaml>=6.0.2",
+    "jsonschema>=4.23.0",
+]
 
 [dependency-groups]
 dev = [
     "pyright>=1.1.383",
     "pytest>=8.3.3",
+    "pytest-asyncio>=0.24.0",
+    "respx>=0.21.1",
     "ruff>=0.7.1",
+    "types-pyyaml>=6.0.12",
+    "types-jsonschema>=4.23.0",
 ]
 
 [tool.ruff]
 line-length = 100
 
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
 [tool.pyright]
 typeCheckingMode = "basic"
+
+# No src/ layout: frontdesk_worker/ is the consumer-loop package (db access,
+# queue adapters, the contract validator, spend controls, the #25 pipeline
+# seam). llm/ stays a sibling top-level package, matching CLAUDE.md's ADR
+# map and docs/conventions.md's repo-layout tree, which both already pin it
+# at worker/llm/ - it's the one directory a grep test enforces as the only
+# place allowed to name a provider (ADR-0006), so it isn't nested any
+# deeper. queue/ is nested under frontdesk_worker/ rather than flat at
+# worker/queue/ (the brief's literal heading) because a bare top-level
+# `queue` package on sys.path would shadow Python's own stdlib `queue`
+# module for every dependency that imports it internally (asyncio, urllib3,
+# boto3, httpx among them) - a silent, hard-to-debug collision not worth
+# the flat layout.
+[tool.hatch.build.targets.wheel]
+packages = ["frontdesk_worker", "llm"]
 
 [build-system]
 requires = ["hatchling"]

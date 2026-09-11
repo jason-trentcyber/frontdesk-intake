@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "frontdesk.worker.fullname" . }}
+  labels:
+    {{- include "frontdesk.worker.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.worker.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "frontdesk.worker.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "frontdesk.worker.selectorLabels" . | nindent 8 }}
+        {{- include "frontdesk.partOf" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "frontdesk.worker.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.worker.serviceAccount.automountServiceAccountToken }}
+      securityContext:
+        {{- toYaml .Values.worker.podSecurityContext | nindent 8 }}
+      # SIGTERM must reach the process (frontdesk_worker/__main__.py's
+      # signal handler finishes the in-flight message before exiting) -
+      # Kubernetes sends it directly to PID 1, which `python -m
+      # frontdesk_worker` (worker/Dockerfile's CMD, no shell wrapper) is.
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: worker
+          image: {{ include "frontdesk.worker.image" . }}
+          imagePullPolicy: {{ .Values.worker.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.worker.containerSecurityContext | nindent 12 }}
+          env:
+            - name: QUEUE_PROVIDER
+              value: {{ .Values.worker.queueProvider | quote }}
+            - name: LLM_PROVIDER
+              value: {{ .Values.worker.llmProvider | quote }}
+            - name: LLM_MODEL
+              value: {{ .Values.worker.llmModel | quote }}
+            - name: VISIBILITY_TIMEOUT_SECONDS
+              value: {{ .Values.worker.visibilityTimeoutSeconds | quote }}
+            - name: MAX_DELIVERY_ATTEMPTS
+              value: {{ .Values.worker.maxDeliveryAttempts | quote }}
+            - name: GLOBAL_DAILY_SPEND_CEILING_USD
+              value: {{ .Values.worker.globalDailySpendCeilingUsd | quote }}
+            # llm.get_provider() reads this directly (worker/llm/__init__.py) -
+            # not read anywhere else in worker/ (ADR-0006). Not sealed until a
+            # human seals it and flips worker.llmProvider to openrouter
+            # (README.md → Secrets); optional so this Deployment isn't
+            # blocked on that secret existing while llmProvider stays fake.
+            - name: OPENROUTER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.worker.llmSecretName }}
+                  key: {{ .Values.worker.llmSecretKey }}
+                  optional: true
+            # ADR-0017's env pattern, exactly - worker/ references
+            # APP_PGUSER + frontdesk-app-password only, same as api/. It
+            # must never reference frontdesk-password; that key is
+            # frontdesk-db-migrate's alone (ADR-0017, ADR-0021, ADR-0023 §1
+            # "the worker performs no DDL and no migrations").
+            - name: PGHOST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "frontdesk.postgres.fullname" . }}-connection
+                  key: PGHOST
+            - name: PGPORT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "frontdesk.postgres.fullname" . }}-connection
+                  key: PGPORT
+            - name: PGDATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "frontdesk.postgres.fullname" . }}-connection
+                  key: PGDATABASE
+            - name: PGUSER
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "frontdesk.postgres.fullname" . }}-connection
+                  key: APP_PGUSER
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgres.credentialsSecret }}
+                  key: frontdesk-app-password
+            # Named DATABASE_URL, not DATABASE_APP_URL, matching
+            # api-deployment.yaml and ADR-0021: DATABASE_APP_URL "has no
+            # in-cluster counterpart" - it's the local-dev name only.
+            # frontdesk_worker/settings.py prefers DATABASE_APP_URL and
+            # falls back to this, resolving to the app role in both places.
+            - name: DATABASE_URL
+              value: "postgresql://$(PGUSER):$(PGPASSWORD)@$(PGHOST):$(PGPORT)/$(PGDATABASE)"
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}

@@ -70,6 +70,37 @@ app.kubernetes.io/component: api
 {{- end -}}
 {{- end -}}
 
+{{- define "frontdesk.worker.fullname" -}}
+{{ include "frontdesk.name" . }}-worker
+{{- end -}}
+
+{{- define "frontdesk.worker.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "frontdesk.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: worker
+{{- end -}}
+
+{{- define "frontdesk.worker.labels" -}}
+{{ include "frontdesk.labels" . }}
+app.kubernetes.io/component: worker
+{{- end -}}
+
+{{- define "frontdesk.worker.serviceAccountName" -}}
+{{- if .Values.worker.serviceAccount.create -}}
+{{- default (include "frontdesk.worker.fullname" .) .Values.worker.serviceAccount.name -}}
+{{- else -}}
+{{- default "default" .Values.worker.serviceAccount.name -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "frontdesk.worker.image" -}}
+{{- if .Values.worker.image.digest -}}
+{{ .Values.worker.image.repository }}@{{ .Values.worker.image.digest }}
+{{- else -}}
+{{ .Values.worker.image.repository }}:{{ .Values.worker.image.tag }}
+{{- end -}}
+{{- end -}}
+
 {{/*
 Every component's pod template gets this in addition to its own
 selectorLabels - deliberately NOT folded into selectorLabels/labels,

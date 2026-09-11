@@ -118,6 +118,78 @@ api:
   # values file sets sqs supplies those three there, not in this file.
   queueProvider: pgmq
 
+# worker/ (#23): the queue consumer - pgmq/SQS -> validate against
+# docs/contracts/triage-message.schema.json -> for_org() -> the #25 triage
+# pipeline seam. No Service, no Ingress: it serves no traffic, only
+# consumes (ADR-0023 §4 - one process, one replica, doing both ingestion
+# and triage inline once #24/#25 land).
+worker:
+  replicaCount: 1
+
+  image:
+    repository: ghcr.io/jason-trentcyber/frontdesk-worker
+    # Pinned by digest at deploy time (ADR-0014): --set worker.image.digest=sha256:...
+    # `tag` is a fallback only so this chart lints/templates without it.
+    digest: ""
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+  serviceAccount:
+    create: true
+    name: ""
+    automountServiceAccountToken: false
+
+  podSecurityContext:
+    runAsNonRoot: true
+    # Matches worker/Dockerfile's numeric USER 1001:1001 - same reasoning
+    # as web/api's podSecurityContext above (#18/#65 postmortem).
+    runAsUser: 1001
+    runAsGroup: 1001
+    seccompProfile:
+      type: RuntimeDefault
+
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: ["ALL"]
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      # Sized for #24's ONNX embedding model (ADR-0023 §3: ONNX Runtime
+      # peak RSS 377Mi measured, torch's 623Mi), not this PR's own needs -
+      # this PR sits well under it. Do not lower this because it fits
+      # today; #24 would only have to raise it back.
+      memory: 512Mi
+
+  # Selection is env-only (ADR-0004), same as api.queueProvider. sqs needs
+  # AWS_REGION/SQS_QUEUE_URL/SQS_DLQ_URL too, wired the same way
+  # api.queueProvider's comment describes - not set here since pgmq is the
+  # deployed provider.
+  queueProvider: pgmq
+
+  # Selection is env-only (ADR-0006). Defaults to fake so this chart never
+  # depends on a live provider's key existing - changing LLM_PROVIDER in
+  # production is explicitly a human-only action (CLAUDE.md → "Things that
+  # always need a human"). llmSecretName/llmSecretKey are wired into the
+  # Deployment ahead of that switch anyway (optional: true, same pattern as
+  # turnstile.secretName below), so flipping providers later is a
+  # values-file + sealed-secret change, not a template change.
+  llmProvider: fake
+  llmModel: haiku
+  llmSecretName: llm-provider
+  llmSecretKey: api-key
+
+  # ADR-0023 §4/§5 - see worker/frontdesk_worker/consumer.py and spend.py
+  # for the reasoning behind these defaults.
+  visibilityTimeoutSeconds: 15
+  maxDeliveryAttempts: 5
+  globalDailySpendCeilingUsd: "0.30"
+
 # Postgres 16 + pgvector + pgmq, as a StatefulSet in this same chart/release
 # (ADR-0016). postgres.enabled: false on EKS (values-eks.yaml) - the swap
 # is an externally supplied database.externalSecretName (RDS), same

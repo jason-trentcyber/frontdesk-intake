@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 // ADR-0004: the five operations, no more. Selection by QUEUE_PROVIDER env
 // only - no auto-detection, no other switch.
 
@@ -28,10 +30,16 @@ export interface Queue<T> {
 // enforced by the database. Every payload MUST carry orgId; the consumer
 // (worker/) is responsible for opening forOrg(orgId, ...) before
 // touching any tenant table.
-export interface TriageMessage {
-  orgId: string;
-  requestId: string;
-}
+// Single source of truth for the wire shape (#23): docs/contracts/triage-message.schema.json
+// is generated from this schema via z.toJSONSchema() (see queue.contract.test.ts, which fails
+// the build if the committed file drifts). worker/ validates against the committed JSON file
+// directly, not a hand-written Python copy, so the two languages cannot silently diverge.
+export const triageMessageSchema = z.object({
+  orgId: z.string().min(1),
+  requestId: z.string().min(1),
+});
+
+export type TriageMessage = z.infer<typeof triageMessageSchema>;
 
 // The type above is erased at runtime, and the queue has no RLS to catch a
 // mistake - so an unscoped message would be accepted silently and only
@@ -39,14 +47,27 @@ export interface TriageMessage {
 // org. Assert at the boundary instead. Producers call this before send();
 // consumers call it on receive(), because a message written by an older
 // build is just as unscoped as one written by a buggy new one.
+//
+// Delegates to triageMessageSchema (same validation, one definition) but keeps its own
+// name, signature, and error text: requests.ts and its tests depend on both.
 export function assertTriageMessage(value: unknown): asserts value is TriageMessage {
-  const m = value as Partial<TriageMessage> | null;
-  if (!m || typeof m.orgId !== "string" || m.orgId.length === 0) {
+  const result = triageMessageSchema.safeParse(value);
+  if (result.success) {
+    return;
+  }
+  const issues = result.error.issues;
+  // A root-level issue (value isn't an object at all, e.g. null/undefined)
+  // has an empty path; treat it as touching every field, matching the old
+  // `!m` check's precedence of failing on orgId first either way.
+  const touches = (field: string) =>
+    issues.some((issue) => issue.path.length === 0 || issue.path[0] === field);
+  if (touches("orgId")) {
     throw new Error("TriageMessage.orgId is required - the queue has no RLS to enforce tenancy");
   }
-  if (typeof m.requestId !== "string" || m.requestId.length === 0) {
+  if (touches("requestId")) {
     throw new Error("TriageMessage.requestId is required");
   }
+  throw new Error("TriageMessage is invalid");
 }
 
 export const QUEUE_NAME = "frontdesk_triage";
