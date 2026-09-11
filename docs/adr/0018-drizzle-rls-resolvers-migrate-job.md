@@ -1,6 +1,6 @@
 # ADR-0018: Tenancy data layer — Drizzle schema + RLS policies versioned together, `SECURITY DEFINER` entry-point resolvers, migrations from an in-cluster Job; amends ADR-0003 and ADR-0007
 
-Status: decided 2026-09-09; implementation tracked in #21 (the `db/` package, tests, CI job, migrate image and chart Job land in follow-up PRs, not this one). The hook-phase clause `pre-install,pre-upgrade` below is superseded by ADR-0019. Supersedes the mechanism clauses "Prisma middleware injects `where.org_id`" (ADR-0007) and "via the Prisma adapter" (ADR-0003). Everything else in both ADRs stands: two seeded orgs, `org_id NOT NULL` + FK on every tenant table, RLS as the second layer, email allow-list membership, Auth.js with Google and GitHub, identities in our Postgres.
+Status: decided 2026-09-09; implementation tracked in #21 (the `db/` package, tests, CI job, migrate image and chart Job land in follow-up PRs, not this one). The hook-phase clause `pre-install,pre-upgrade` below is superseded by ADR-0019, and the clause placing the ADR-0005 `reindex` job in the `frontdesk-db` image is superseded by ADR-0025 (that job needs the Python/ONNX embedder, which lives in the worker image). Supersedes the mechanism clauses "Prisma middleware injects `where.org_id`" (ADR-0007) and "via the Prisma adapter" (ADR-0003). Everything else in both ADRs stands: two seeded orgs, `org_id NOT NULL` + FK on every tenant table, RLS as the second layer, email allow-list membership, Auth.js with Google and GitHub, identities in our Postgres.
 
 ## Context
 
