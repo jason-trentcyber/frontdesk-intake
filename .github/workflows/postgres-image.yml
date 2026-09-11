@@ -4,15 +4,26 @@ name: postgres-image
 # bump (ADR-0016) - unlike deploy.yml's app image, this never runs on a
 # plain merge to main, only when deploy/postgres/ itself (or this
 # workflow) actually changes.
+#
+# The trigger lists the image's *build inputs*, not the directory (#94).
+# deploy/postgres/ also holds README.md and restore-drill.sh, neither of
+# which the Dockerfile COPYs; editing them used to fire this workflow, and
+# the publish job would then correctly refuse to overwrite the already
+# published tag - a red X on main for a docs edit, twice (#80, #92). An
+# exclusion list would have to be extended for every new doc added here;
+# an inclusion list fails closed, so a new build input that someone
+# forgets to add simply doesn't publish rather than silently shipping.
 on:
   pull_request:
     paths:
-      - deploy/postgres/**
+      - deploy/postgres/Dockerfile
+      - deploy/postgres/initdb/**
       - .github/workflows/postgres-image.yml
   push:
     branches: [main]
     paths:
-      - deploy/postgres/**
+      - deploy/postgres/Dockerfile
+      - deploy/postgres/initdb/**
       - .github/workflows/postgres-image.yml
 
 permissions:
