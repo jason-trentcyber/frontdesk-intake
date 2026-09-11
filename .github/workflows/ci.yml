@@ -462,6 +462,12 @@ jobs:
           helm lint deploy/chart -f deploy/chart/values-hetzner.yaml
           helm lint deploy/chart -f deploy/chart/values-eks.yaml
 
+      # The reference guard parses rendered YAML by shape; if that parsing
+      # silently stops matching, the guard passes when it should fail. These
+      # fixtures pin it.
+      - name: Test the manifest reference guard
+        run: bash deploy/chart/check-manifest-refs.test.sh
+
       - name: Template + validate chart
         run: |
           set -euo pipefail

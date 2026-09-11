@@ -22,8 +22,20 @@ set -euo pipefail
 manifest="${1:?usage: check-manifest-refs.sh <rendered-manifest.yaml>}"
 [ -r "$manifest" ] || { echo "not readable: $manifest" >&2; exit 2; }
 
-# Names of every ServiceAccount the chart actually emits. Within a document,
-# metadata.name is the first 2-space-indented `name:` after the kind line.
+# Parsing is by YAML shape, not with a parser, to avoid adding a dependency to
+# the helm-lint job. Two assumptions, both true of every template in this chart
+# and both pinned by check-manifest-refs.test.sh:
+#
+#   1. A ServiceAccount's metadata.name is the first 2-space-indented `name:`
+#      line after its `kind: ServiceAccount`. Reordering metadata so that
+#      another 2-space `name:` comes first would break this.
+#   2. Any `serviceAccountName:` at any indentation is a pod-template field.
+#      No other Kubernetes field shares that name today.
+#
+# If a future template violates either, the test fixtures stop failing where
+# they should - which is the signal to switch to a real YAML parser.
+
+# Names of every ServiceAccount the chart actually emits.
 emitted="$(awk '
   /^kind: ServiceAccount$/ { want = 1; next }
   want && /^  name: / { sub(/^  name: /, ""); print; want = 0 }
