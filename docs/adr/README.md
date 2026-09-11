@@ -8,7 +8,7 @@ Format: context, decision, consequences, alternatives rejected. One file per dec
 | 0002 | Ingress and edge: ingress-nginx, cert-manager, Cloudflare in front | decided |
 | 0003 | Auth: Auth.js with Google and GitHub, users in our Postgres | decided; "Prisma adapter" clause superseded by 0018 |
 | 0004 | Queue: pgmq in production, SQS adapter tested against LocalStack | decided |
-| 0005 | Retrieval: pgvector hybrid search, in-process embeddings | decided |
+| 0005 | Retrieval: pgvector hybrid search, in-process embeddings | decided; embedding runtime (not the model) changed to ONNX by 0023 |
 | 0006 | LLM routing: OpenRouter primary, Bedrock adapter switch-proven | decided |
 | 0007 | Tenancy: two seeded orgs, org_id scoping plus RLS | decided; "Prisma middleware" clause superseded by 0018 |
 | 0008 | AI-first SDLC: provenance, review agent, eval gate, ops loop | decided; provenance/review gates amended by 0011 for Dependabot |
@@ -26,3 +26,4 @@ Format: context, decision, consequences, alternatives rejected. One file per dec
 | 0020 | deployer Role needs `patch` on `batch/jobs` (Helm 4 applies hooks server-side); Helm version pinned in CI; amends 0016 | decided, applied |
 | 0021 | `web/` uses `@frontdesk/db` in-process; `api/` serves external integrations (F3) and owns the queue producer | decided |
 | 0022 | `api/` creates the pgmq queue at startup as `frontdesk_app` (the owner role has no `pgmq` privileges, by design); amends 0004 and 0018 | decided |
+| 0023 | Worker runtime: `asyncpg` and hand-written SQL (no Python ORM), a JSON-Schema queue contract both languages validate, ONNX Runtime embeddings, one process, four spend controls; amends 0004, 0005 and 0006 | decided |
