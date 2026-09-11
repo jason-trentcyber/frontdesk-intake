@@ -1,23 +1,13 @@
-"""ADR-0006: no file outside worker/llm/ may reference 'openrouter' or
-'bedrock' - a grep test enforces it. The ADR itself now records that this
-has always meant application code, not the tests that exercise the
-adapters - see its "Switch-proof" section.
+"""ADR-0006's provider-isolation grep test, scoped by ADR-0024.
 
-Scope: frontdesk_worker/ (the runtime package) only, not tests/ and not
-llm/ itself. The brief's own wording ("this file itself and the ADRs are
-prose - scope the test to source files") is about not tripping on
-documentation; it doesn't (and can't) mean test files that specifically
-exercise the provider adapters - test_llm_openrouter.py, test_llm_bedrock.py,
-test_provider_parity.py, and this file's own docstring all have to name a
-provider to test or describe it. What ADR-0006 actually protects is
-*application* code outside llm/ branching on a provider, which
-frontdesk_worker/ is - the same distinction api/'s equivalent comment draws
-for @aws-sdk/client-sqs: production code reaching for a vendor SDK behind
-the Queue interface is the violation, a test fixture that sets one up is not.
+Banned strings: 'openrouter', 'bedrock'. Scope: frontdesk_worker/ (the
+runtime application package) only - not llm/ (the adapters, which must name
+providers), not tests/ (which must name providers to test them).
 
-'boto3' is deliberately NOT part of this grep either, for the reason given
-in queue/sqs.py's header comment: it's also the SDK ADR-0004 requires for
-the SQS adapter, unrelated to which LLM provider is live.
+'boto3' is deliberately NOT banned: ADR-0004 independently requires it for
+the SQS adapter, an unrelated service. Full reasoning, including the
+alternatives rejected, is in docs/adr/0024-provider-isolation-scope.md - not
+repeated here, so the two cannot drift.
 """
 
 from pathlib import Path

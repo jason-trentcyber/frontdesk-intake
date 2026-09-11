@@ -9,11 +9,11 @@ Uses boto3 (sync), off-loaded to a thread via asyncio.to_thread to keep the
 Queue protocol async without pulling in aioboto3 for one adapter that is
 switch-proven, not live in production (QUEUE_PROVIDER=pgmq).
 
-This file necessarily imports boto3 even though ADR-0006's grep test bans
-that string outside worker/llm/ - see tests/test_provider_isolation.py for
-why that's the right scope for what the grep test protects (leaking an LLM
-*provider* name), not a blanket ban on the AWS SDK, which ADR-0004 already
-requires here for a service ADR-0006 has nothing to do with.
+boto3 here is ADR-0004's SQS SDK; the same library is separately an LLM
+adapter's SDK over in worker/llm/. ADR-0024 settles the collision between
+those two decided ADRs: the provider-isolation grep bans LLM provider
+names, not the AWS SDK. (This comment deliberately does not name that
+adapter - the grep would flag it, correctly.)
 """
 
 import asyncio
