@@ -188,7 +188,15 @@ worker:
   # for the reasoning behind these defaults.
   visibilityTimeoutSeconds: 15
   maxDeliveryAttempts: 5
-  globalDailySpendCeilingUsd: "0.30"
+  # Layer 3's backstop must sit clear of layer 2, or the two stop being
+  # independent: orgs.daily_token_budget defaults to 200,000 tokens, which at
+  # ADR-0023 §5's measured 3,400-in/380-out request mix is $0.280/org/day. A
+  # $0.30 ceiling would mean the *second* org to draft anything flips every
+  # org to FakeProvider - the opposite of layer 2's "other orgs are
+  # unaffected". $1.00 leaves room for three orgs at a full budget. The
+  # $10/month vendor cap (layer 1) is still the bound that holds the money;
+  # steady state is ~$2/month.
+  globalDailySpendCeilingUsd: "1.00"
 
 # Postgres 16 + pgvector + pgmq, as a StatefulSet in this same chart/release
 # (ADR-0016). postgres.enabled: false on EKS (values-eks.yaml) - the swap
