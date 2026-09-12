@@ -1,0 +1,27 @@
+apiVersion: 1
+
+# Grafana cannot re-provision a uid change onto a datasource that already
+# exists - it exits with "Datasource provisioning error: data source not
+# found" and crash-loops. deleteDatasources runs first and makes this file
+# idempotent for an existing install, not just a fresh one. (Hit for real
+# while building this: the first version let Grafana auto-generate the uid,
+# the dashboard referenced `prometheus`, and every panel would have been
+# silently empty.)
+deleteDatasources:
+  - name: Prometheus
+    orgId: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    # Pinned, not auto-generated: the dashboard JSON in grafana/dashboards/
+    # references this uid, and a generated one differs per install, which
+    # renders every panel empty with no error. Caught by checking
+    # /api/datasources against the dashboard's datasource refs.
+    uid: prometheus
+    access: proxy
+    # host networking, so Prometheus is on this same loopback.
+    url: http://127.0.0.1:9090
+    isDefault: true
+    jsonData:
+      timeInterval: 30s
