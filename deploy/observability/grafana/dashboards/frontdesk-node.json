@@ -1,9 +1,7 @@
 {
   "uid": "frontdesk-node",
   "title": "frontdesk \u2014 node",
-  "tags": [
-    "frontdesk"
-  ],
+  "tags": ["frontdesk"],
   "timezone": "browser",
   "schemaVersion": 39,
   "version": 1,
@@ -553,9 +551,7 @@
       },
       "options": {
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -613,9 +609,7 @@
       },
       "options": {
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": true
         }
