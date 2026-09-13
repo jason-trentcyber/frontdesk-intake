@@ -62,9 +62,26 @@ async def retrieve_chunks(
         vector_literal,
         candidate_limit,
     )
+    # OR-joining the query's own lexemes, not plainto_tsquery(): that
+    # function AND-joins every lexeme, so a real multi-sentence request
+    # (subject + body, ~15-20 significant words) becomes a conjunction no
+    # chunk can ever satisfy - the FTS arm silently returns zero rows and
+    # RRF degenerates to cosine-only. ts_rank_cd is what should discriminate
+    # relevance here; the tsquery only needs to pick a *candidate set*, the
+    # same job plainto_tsquery was wrongly also using it to filter down to
+    # nothing. A query that reduces to zero lexemes (pure stopwords/
+    # punctuation) produces an empty tsquery, which matches nothing rather
+    # than raising - the `<> ''` guard makes that explicit rather than
+    # relying on `@@` against an empty tsquery to happen to behave that way.
     fts_rows = await conn.fetch(
-        "select id, text, ts_rank_cd(tsv, plainto_tsquery('english', $2)) as score "
-        "from chunks where org_id = $1 and tsv @@ plainto_tsquery('english', $2) "
+        "with q as ("
+        "  select to_tsquery('english', array_to_string("
+        "    tsvector_to_array(to_tsvector('english', $2)), ' | '"
+        "  )) as tsq"
+        ") "
+        "select c.id, c.text, ts_rank_cd(c.tsv, q.tsq) as score "
+        "from chunks c cross join q "
+        "where c.org_id = $1 and q.tsq::text <> '' and c.tsv @@ q.tsq "
         "order by score desc limit $3",
         org_id,
         query_text,

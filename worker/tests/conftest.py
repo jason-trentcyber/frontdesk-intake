@@ -96,16 +96,26 @@ class OrgFactory:
         self._org_ids.append(org_id)
         return org_id
 
-    async def make_request(self, org_id: str, *, subject: str = "test") -> str:
+    async def make_request(
+        self, org_id: str, *, subject: str = "test", body: str = "test body"
+    ) -> str:
+        # `body` defaults to a single throwaway word rather than a realistic
+        # sentence on purpose: a test that cares about full-text matching
+        # (retrieval, the triage pipeline) must pass a real body explicitly -
+        # a generic realistic-looking default here would have hidden the
+        # exact bug it should be forcing every caller to think about
+        # (plainto_tsquery AND-joining a whole email into an unsatisfiable
+        # query, #105's review finding).
         token = f"test-{uuid.uuid4().hex}"
         row = await self._conn.fetchrow(
             """
             insert into requests (org_id, source, subject, body, tracking_token)
-            values ($1, 'api', $2, 'test body', $3)
+            values ($1, 'api', $2, $3, $4)
             returning id
             """,
             org_id,
             subject,
+            body,
             token,
         )
         assert row is not None
