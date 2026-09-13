@@ -23,9 +23,13 @@ ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 # when pyproject.toml/uv.lock change - not on every source edit.
 COPY worker/pyproject.toml worker/uv.lock ./
 RUN uv sync --frozen --no-install-project --no-dev
-# Then the project itself.
+# Then the project itself. prompts/ isn't Python (no uv sync step needs
+# it) but frontdesk_worker/triage/prompts.py reads its files at import
+# time (#25, S7) - it has to be on disk wherever that import runs,
+# runtime included, same as docs/contracts/ below.
 COPY worker/frontdesk_worker ./frontdesk_worker
 COPY worker/llm ./llm
+COPY worker/prompts ./prompts
 RUN uv sync --frozen --no-dev
 
 # ADR-0023 Consequences: "the worker image must ship the ONNX model file
@@ -49,6 +53,7 @@ ENV PATH="/app/worker/.venv/bin:$PATH" \
 COPY --from=builder --chown=1001:1001 /app/worker/.venv ./.venv
 COPY --from=builder --chown=1001:1001 /app/worker/frontdesk_worker ./frontdesk_worker
 COPY --from=builder --chown=1001:1001 /app/worker/llm ./llm
+COPY --from=builder --chown=1001:1001 /app/worker/prompts ./prompts
 COPY --from=model --chown=1001:1001 /app/worker/models ./models
 COPY --chown=1001:1001 docs/contracts /app/docs/contracts
 

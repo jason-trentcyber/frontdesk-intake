@@ -38,6 +38,14 @@ Judgment calls (see the PR body for the full reasoning):
   to_thread hops. This does not eliminate starvation risk under sustained
   ingest load; it is what ADR-0023 §4's revisit trigger (split the
   pipelines, pay for a second model load) exists for.
+- run_triage_pipeline (#25) needs the same Embedder instance ingestion
+  already loads (retrieval embeds the request's own text with the same
+  bge-small model) and a Settings for spend.resolve_provider(). Rather than
+  load a second model instance per triage message - the worker's 512Mi
+  limit was sized for exactly one - process_one/run_forever's signatures
+  are widened to accept and thread through the one Embedder/Settings
+  __main__.py already constructs, the same way process_one_ingest/
+  run_forever_ingest already thread the ingest queue's Embedder.
 """
 
 import asyncio
@@ -56,6 +64,7 @@ from .ingestion.embedder import Embedder
 from .ingestion.pipeline import run_ingestion_pipeline
 from .pipeline import run_triage_pipeline
 from .queue import Queue
+from .settings import Settings
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +76,8 @@ DEFAULT_POLL_INTERVAL_SECONDS = 2.0
 async def process_one(
     queue: Queue,
     pool: asyncpg.Pool,
+    embedder: Embedder,
+    settings: Settings,
     *,
     visibility_timeout: int,
     max_delivery_attempts: int,
@@ -79,6 +90,14 @@ async def process_one(
     propagate and crash the process rather than be swallowed as "no
     messages" - a crash-looping pod is the correct signal that api/ has not
     started yet.
+
+    embedder/settings (#25): threaded down to run_triage_pipeline, which
+    needs the same single Embedder instance ingestion loads (query
+    embedding for retrieval) and settings for spend.resolve_provider(). Not
+    bundled into a context object with `pool` because `pool` is also used
+    directly here, for for_org() - three separate parameters is more
+    honest about that than a struct two of whose fields are used here and
+    one only passed through.
     """
     messages = await queue.receive(visibility_timeout, qty=1)
     if not messages:
@@ -107,7 +126,7 @@ async def process_one(
                 org_id,
                 request_id,
             )
-            await run_triage_pipeline(conn, queue, org_id, request_id)
+            await run_triage_pipeline(conn, pool, embedder, settings, org_id, request_id)
     except Exception:
         if message.delivery_attempt >= max_delivery_attempts:
             logger.exception(
@@ -140,6 +159,8 @@ async def process_one(
 async def run_forever(
     queue: Queue,
     pool: asyncpg.Pool,
+    embedder: Embedder,
+    settings: Settings,
     shutdown: asyncio.Event,
     *,
     visibility_timeout: int = DEFAULT_VISIBILITY_TIMEOUT_SECONDS,
@@ -154,6 +175,8 @@ async def run_forever(
         got_message = await process_one(
             queue,
             pool,
+            embedder,
+            settings,
             visibility_timeout=visibility_timeout,
             max_delivery_attempts=max_delivery_attempts,
         )

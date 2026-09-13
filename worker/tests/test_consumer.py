@@ -55,7 +55,12 @@ async def test_invalid_message_is_dead_lettered_not_retried(
     queue = FakeQueue(pending=[QueueMessage(id="1", body={"orgId": "x"}, delivery_attempt=1)])
 
     got_message = await consumer.process_one(
-        queue, app_pool, visibility_timeout=15, max_delivery_attempts=5
+        queue,
+        app_pool,
+        object(),  # type: ignore[arg-type]
+        object(),  # type: ignore[arg-type]
+        visibility_timeout=15,
+        max_delivery_attempts=5,
     )
 
     assert got_message is True
@@ -74,7 +79,9 @@ async def test_valid_message_calls_the_pipeline_seam_and_sets_status_triaging(
 
     calls: list[tuple[str, str]] = []
 
-    async def record_call(conn: object, queue: object, org_id: str, request_id: str) -> None:
+    async def record_call(
+        conn: object, pool: object, embedder: object, settings: object, org_id: str, request_id: str
+    ) -> None:
         calls.append((org_id, request_id))
 
     monkeypatch.setattr(consumer, "run_triage_pipeline", record_call)
@@ -87,7 +94,14 @@ async def test_valid_message_calls_the_pipeline_seam_and_sets_status_triaging(
         ]
     )
 
-    await consumer.process_one(queue, app_pool, visibility_timeout=15, max_delivery_attempts=5)
+    await consumer.process_one(
+        queue,
+        app_pool,
+        object(),  # type: ignore[arg-type]
+        object(),  # type: ignore[arg-type]
+        visibility_timeout=15,
+        max_delivery_attempts=5,
+    )
 
     assert calls == [(org_id, request_id)]
     assert queue.acked == ["1"]
@@ -119,7 +133,14 @@ async def test_pipeline_failure_below_the_retry_ceiling_nacks(
         ]
     )
 
-    await consumer.process_one(queue, app_pool, visibility_timeout=15, max_delivery_attempts=5)
+    await consumer.process_one(
+        queue,
+        app_pool,
+        object(),  # type: ignore[arg-type]
+        object(),  # type: ignore[arg-type]
+        visibility_timeout=15,
+        max_delivery_attempts=5,
+    )
 
     assert queue.nacked == ["1"]
     assert queue.dead_lettered == []
@@ -146,7 +167,14 @@ async def test_pipeline_failure_at_the_retry_ceiling_dead_letters(
         ]
     )
 
-    await consumer.process_one(queue, app_pool, visibility_timeout=15, max_delivery_attempts=5)
+    await consumer.process_one(
+        queue,
+        app_pool,
+        object(),  # type: ignore[arg-type]
+        object(),  # type: ignore[arg-type]
+        visibility_timeout=15,
+        max_delivery_attempts=5,
+    )
 
     assert queue.dead_lettered == ["1"]
     assert queue.nacked == []
@@ -158,17 +186,15 @@ async def test_empty_queue_returns_false(app_pool: asyncpg.Pool) -> None:
     queue = FakeQueue(pending=[])
 
     got_message = await consumer.process_one(
-        queue, app_pool, visibility_timeout=15, max_delivery_attempts=5
+        queue,
+        app_pool,
+        object(),  # type: ignore[arg-type]
+        object(),  # type: ignore[arg-type]
+        visibility_timeout=15,
+        max_delivery_attempts=5,
     )
 
     assert got_message is False
-
-
-async def test_the_real_pipeline_stub_raises_not_implemented() -> None:
-    from frontdesk_worker.pipeline import run_triage_pipeline
-
-    with pytest.raises(NotImplementedError):
-        await run_triage_pipeline(None, None, "org-1", "req-1")  # type: ignore[arg-type]
 
 
 async def test_run_forever_stops_promptly_with_no_further_receives_after_shutdown() -> None:
@@ -204,6 +230,8 @@ async def test_run_forever_stops_promptly_with_no_further_receives_after_shutdow
         consumer.run_forever(
             queue,
             "not-a-real-pool",  # type: ignore[arg-type]
+            object(),  # type: ignore[arg-type]
+            object(),  # type: ignore[arg-type]
             shutdown,
             poll_interval_seconds=0.01,
         ),
@@ -470,6 +498,8 @@ async def test_both_loops_stop_promptly_on_a_shared_shutdown_event_run_concurren
                 consumer.run_forever(
                     triage_queue,
                     "not-a-real-pool",  # type: ignore[arg-type]
+                    object(),  # type: ignore[arg-type]
+                    object(),  # type: ignore[arg-type]
                     shutdown,
                     poll_interval_seconds=0.01,
                 )

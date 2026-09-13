@@ -25,8 +25,9 @@ async def main() -> None:
     queue = create_queue(settings, pool)
     ingest_queue = create_ingest_queue(settings, pool)
     # Loaded once, here, not per message: the ~130 MB ONNX session and
-    # tokenizer are shared by every ingest message this process ever
-    # handles (ADR-0023 §4's "one process, one resident model").
+    # tokenizer are shared by every message either loop handles - ingest's
+    # chunk embeddings and (#25) triage's query embedding for retrieval -
+    # ADR-0023 §4's "one process, one resident model".
     embedder = Embedder()
 
     shutdown = asyncio.Event()
@@ -45,6 +46,8 @@ async def main() -> None:
                 run_forever(
                     queue,
                     pool,
+                    embedder,
+                    settings,
                     shutdown,
                     visibility_timeout=settings.visibility_timeout_seconds,
                     max_delivery_attempts=settings.max_delivery_attempts,
