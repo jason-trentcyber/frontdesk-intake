@@ -186,11 +186,16 @@ jobs:
         run: |
           # 12 x 15s: the first deploy has to wait for cert-manager's
           # DNS-01 issuance before the Ingress serves a working cert.
+          # /readyz alongside /healthz on every attempt, not just once
+          # healthz is up: /healthz has no DB dependency, so a mis-wired
+          # web DB credential (wrong ConfigMap key, an unsealed secret, a
+          # $(VAR) typo) would leave it green forever - /readyz's SELECT 1
+          # is the only thing that would have caught it (#107's finding).
           for i in $(seq 1 12); do
-            if curl -fsS https://frontdesk.jtrent.dev/healthz; then
+            if curl -fsS https://frontdesk.jtrent.dev/healthz && curl -fsS https://frontdesk.jtrent.dev/readyz; then
               exit 0
             fi
             sleep 15
           done
-          echo "healthz did not return 200 after 12 attempts" >&2
+          echo "healthz/readyz did not both return 200 after 12 attempts" >&2
           exit 1

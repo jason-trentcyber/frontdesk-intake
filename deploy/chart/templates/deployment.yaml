@@ -78,9 +78,16 @@ spec:
                   # (README.md -> Secrets); #27 is the first real consumer.
                   # Optional so this Deployment isn't blocked on that.
                   optional: true
+          # Split same as api-deployment.yaml, now that web/ holds a DB
+          # credential too (this PR): readiness checks the database
+          # (web/src/app/readyz/route.ts, one SELECT 1) so a pod with a
+          # mis-wired credential is pulled from rotation instead of
+          # serving 500s to every tracking-page visitor; liveness stays on
+          # /healthz (no DB dependency) because a DB outage is not
+          # something restarting this pod would fix.
           readinessProbe:
             httpGet:
-              path: /healthz
+              path: /readyz
               port: http
             initialDelaySeconds: 2
             periodSeconds: 10
