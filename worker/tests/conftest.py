@@ -15,6 +15,7 @@ through the frontdesk_app pool - that's the boundary under test.
 """
 
 import hashlib
+import json
 import os
 import uuid
 from collections.abc import AsyncGenerator
@@ -78,29 +79,43 @@ class OrgFactory:
         self._conn = conn
         self._org_ids: list[str] = []
 
-    async def make_org(self, *, daily_token_budget: int = 200_000) -> str:
+    async def make_org(
+        self, *, daily_token_budget: int = 200_000, settings: dict[str, object] | None = None
+    ) -> str:
         slug = f"test-org-{uuid.uuid4().hex[:12]}"
         row = await self._conn.fetchrow(
-            "insert into orgs (slug, name, daily_token_budget) values ($1, $2, $3) returning id",
+            "insert into orgs (slug, name, daily_token_budget, settings) "
+            "values ($1, $2, $3, $4::jsonb) returning id",
             slug,
             slug,
             daily_token_budget,
+            json.dumps(settings or {}),
         )
         assert row is not None
         org_id = str(row["id"])
         self._org_ids.append(org_id)
         return org_id
 
-    async def make_request(self, org_id: str, *, subject: str = "test") -> str:
+    async def make_request(
+        self, org_id: str, *, subject: str = "test", body: str = "test body"
+    ) -> str:
+        # `body` defaults to a single throwaway word rather than a realistic
+        # sentence on purpose: a test that cares about full-text matching
+        # (retrieval, the triage pipeline) must pass a real body explicitly -
+        # a generic realistic-looking default here would have hidden the
+        # exact bug it should be forcing every caller to think about
+        # (plainto_tsquery AND-joining a whole email into an unsatisfiable
+        # query, #105's review finding).
         token = f"test-{uuid.uuid4().hex}"
         row = await self._conn.fetchrow(
             """
             insert into requests (org_id, source, subject, body, tracking_token)
-            values ($1, 'api', $2, 'test body', $3)
+            values ($1, 'api', $2, $3, $4)
             returning id
             """,
             org_id,
             subject,
+            body,
             token,
         )
         assert row is not None
@@ -170,6 +185,33 @@ class OrgFactory:
             sha256,
             raw,
             status,
+        )
+        assert row is not None
+        return str(row["id"])
+
+    async def make_chunk(
+        self,
+        org_id: str,
+        document_id: str,
+        *,
+        ord: int,
+        text: str,
+        embedding: list[float] | None = None,
+    ) -> str:
+        embedding_literal = None
+        if embedding is not None:
+            embedding_literal = "[" + ",".join(str(float(x)) for x in embedding) + "]"
+        row = await self._conn.fetchrow(
+            """
+            insert into chunks (org_id, document_id, ord, text, embedding)
+            values ($1, $2, $3, $4, $5::vector)
+            returning id
+            """,
+            org_id,
+            document_id,
+            ord,
+            text,
+            embedding_literal,
         )
         assert row is not None
         return str(row["id"])
