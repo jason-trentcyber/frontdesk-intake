@@ -19,6 +19,7 @@ deploy/chart/   One Helm chart for everything; nothing k3s-specific
   templates/postgres-*.yaml  Postgres StatefulSet, PVCs, backup CronJob (ADR-0016), gated by postgres.enabled
 deploy/postgres/             Postgres image (pgvector + pgmq), initdb roles/extensions, backup + restore runbook; used by compose AND the chart
 deploy/bootstrap/            In-cluster bootstrap: ingress-nginx, cert-manager, sealed-secrets, observability
+deploy/observability/        Prometheus + Grafana on the Hermes VPS, scraping the node over the tailnet (ADR-0010, ADR-0026); not part of the chart
   rbac/                       namespace + least-privilege RBAC for CI deploys (ADR-0014), human-applied once
 deploy/values-eks.yaml        bootstrap layer's own EKS swap (ingress-nginx Service type) - distinct from deploy/chart/values-eks.yaml
 infra/hetzner/  Terraform: server, firewall, floating IP, cloud-init k3s

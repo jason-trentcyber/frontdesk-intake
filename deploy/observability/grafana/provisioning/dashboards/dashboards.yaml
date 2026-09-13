@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: frontdesk
+    type: file
+    # Provisioned read-only from the repo: the dashboard JSON is the source
+    # of truth, so a container rebuild cannot lose an edit made in the UI.
+    # Edit the file, not the browser.
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards

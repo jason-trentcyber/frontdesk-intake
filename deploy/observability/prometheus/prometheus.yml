@@ -1,0 +1,34 @@
+# Scrapes the frontdesk k3s node over the tailnet (ADR-0013: the node is
+# reachable at its tailnet IP, not over the public internet).
+#
+# Only node-exporter is scraped. Verified before writing this file:
+#   - node-exporter runs hostNetwork: true, so :9100 answers on the
+#     tailnet IP directly. `curl http://100.88.28.10:9100/metrics` -> 200.
+#   - kube-state-metrics is a ClusterIP Service with no hostNetwork, so it
+#     is NOT reachable from outside the cluster. Exposing it needs either a
+#     tailnet-scoped Ingress or a scoped read-only ServiceAccount; both are
+#     real work, recorded as follow-ups in ADR-0026 rather than guessed at.
+#   - kubelet's /metrics/cadvisor on :10250 does answer over the tailnet,
+#     but only with a client certificate. The one available is the cluster
+#     ADMIN cert from infra/hetzner/kubeconfig, and putting cluster-admin
+#     credentials in a scrape config to draw a memory graph is the wrong
+#     trade. Also a follow-up: a read-only SA token scoped to
+#     nodes/metrics, the same pattern ADR-0014's deployer SA uses.
+global:
+  scrape_interval: 30s
+  scrape_timeout: 10s
+  external_labels:
+    cluster: frontdesk
+
+scrape_configs:
+  # Prometheus' own metrics - free, and the first thing to check when a
+  # dashboard looks wrong (is the scrape failing, or is the target down?).
+  - job_name: prometheus
+    static_configs:
+      - targets: ["127.0.0.1:9090"]
+
+  - job_name: node-exporter
+    static_configs:
+      - targets: ["100.88.28.10:9100"]
+        labels:
+          node: frontdesk

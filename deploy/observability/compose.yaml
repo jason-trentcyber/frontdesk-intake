@@ -1,0 +1,67 @@
+# Observability for the frontdesk cluster, running on the Hermes VPS
+# (trentcyber-main) rather than the 4 GB k3s node - ADR-0010 put it here
+# deliberately, and ADR-0026 records why this is Prometheus + Grafana only
+# rather than the four-service stack #52's body describes.
+#
+# Everything binds to 127.0.0.1. Nothing is published to the internet:
+# Grafana is reached over the tailnet or an SSH tunnel, same as the Hermes
+# dashboard. No new public attack surface (ADR-0002's posture).
+#
+# Memory limits are set from measurement, not from vendor defaults - see
+# ADR-0026's Context for the free-memory arithmetic that constrains them.
+services:
+  prometheus:
+    image: prom/prometheus:v3.7.3
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      # 15d at this scrape volume is well under a GB; the VPS has disk to
+      # spare and it is long enough to see a week-over-week trend.
+      - --storage.tsdb.retention.time=15d
+      - --web.listen-address=127.0.0.1:9090
+    network_mode: host
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    deploy:
+      resources:
+        limits:
+          memory: 320M
+
+  grafana:
+    image: grafana/grafana:12.3.1
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      GF_SERVER_HTTP_ADDR: 127.0.0.1
+      GF_SERVER_HTTP_PORT: "3300"
+      # Anonymous viewer access: this Grafana is reachable only over the
+      # tailnet/an SSH tunnel, so the tailnet ACL is the authentication
+      # boundary. A second password to manage buys nothing here, and the
+      # admin account below still gates edits.
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_AUTH_BASIC_ENABLED: "true"
+      GF_SECURITY_ADMIN_USER: admin
+      # Read from the environment (deploy/observability/.env, gitignored).
+      # No default: compose fails loudly rather than starting with a
+      # guessable password.
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in deploy/observability/.env}
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    deploy:
+      resources:
+        limits:
+          memory: 200M
+
+volumes:
+  prometheus-data:
+  grafana-data:
