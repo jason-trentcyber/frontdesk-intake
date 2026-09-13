@@ -32,6 +32,38 @@ spec:
           env:
             - name: PORT
               value: {{ .Values.web.service.targetPort | quote }}
+            # ADR-0017's env pattern, exactly - copied verbatim from
+            # api-deployment.yaml (ADR-0021, ADR-0027). web/ references
+            # APP_PGUSER + frontdesk-app-password only; it must never
+            # reference frontdesk-password, that key is
+            # frontdesk-db-migrate's alone (ADR-0017, ADR-0019).
+            - name: PGHOST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "frontdesk.postgres.fullname" . }}-connection
+                  key: PGHOST
+            - name: PGPORT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "frontdesk.postgres.fullname" . }}-connection
+                  key: PGPORT
+            - name: PGDATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "frontdesk.postgres.fullname" . }}-connection
+                  key: PGDATABASE
+            - name: PGUSER
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "frontdesk.postgres.fullname" . }}-connection
+                  key: APP_PGUSER
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgres.credentialsSecret }}
+                  key: frontdesk-app-password
+            - name: DATABASE_URL
+              value: "postgresql://$(PGUSER):$(PGPASSWORD)@$(PGHOST):$(PGPORT)/$(PGDATABASE)"
             - name: TURNSTILE_SITE_KEY
               valueFrom:
                 configMapKeyRef:
