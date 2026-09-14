@@ -113,14 +113,26 @@ spec:
                 secretKeyRef:
                   name: auth-secret
                   key: auth-secret
-            # Self-hosted behind ingress-nginx, not a platform Auth.js
-            # auto-detects (Vercel) - without this, Auth.js does not
-            # trust the X-Forwarded-Host header the proxy sets, and the
-            # callback URLs it constructs would not match the real
-            # public origin (ADR-0031, authjs.dev/guides/edge-compatibility
-            # and Auth.js's deployment docs).
-            - name: AUTH_TRUST_HOST
-              value: "true"
+            # 26a follow-up (#26): self-hosted behind ingress-nginx, not
+            # a platform Auth.js auto-detects (Vercel) - without this,
+            # Auth.js derives its own origin from the request/bind
+            # address (observed in production: "http://0.0.0.0:3000/..."
+            # in signinUrl), which never matches the redirect_uri
+            # registered in the Google Cloud Console (#6) and breaks
+            # every OAuth callback. Set from ingress.host, the same knob
+            # PUBLIC_WEB_ORIGIN/API_ORIGIN already derive from - never
+            # hardcoded (ADR-0002 keeps deploy/chart/ portable, no
+            # Cloudflare/Hetzner/k3s names here).
+            #
+            # No separate AUTH_TRUST_HOST: Auth.js's own setEnvDefaults
+            # (@auth/core/lib/utils/env.js) computes
+            # `config.trustHost ?? !!(AUTH_URL ?? AUTH_TRUST_HOST ?? ...)`
+            # - AUTH_URL is checked first in that chain, so setting it
+            # already implies trustHost = true. A separate
+            # AUTH_TRUST_HOST=true next to it would do nothing but leave
+            # a reader wondering which one is actually in effect.
+            - name: AUTH_URL
+              value: "https://{{ .Values.ingress.host }}"
           # Split same as api-deployment.yaml, now that web/ holds a DB
           # credential too (this PR): readiness checks the database
           # (web/src/app/readyz/route.ts, one SELECT 1) so a pod with a

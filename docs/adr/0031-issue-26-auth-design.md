@@ -1,6 +1,6 @@
 # ADR-0031: #26 auth design — database sessions, a dedicated `auth` Postgres schema, per-request membership resolution, three-layer authorization guard; amends ADR-0003 and ADR-0018
 
-Status: decided 2026-09-14. Amends ADR-0003 (supersedes the session-storage and schema-location detail the "Prisma adapter" clause left implicit) and ADR-0018 (narrows the "unscoped surface is exactly three functions" sentence — see §4 below). Narrows #26 to 26a; 26b (queue view, request detail, approve/edit/reject, audit) is out of scope here and unaffected by this ADR.
+Status: decided 2026-09-14. Amends ADR-0003 (supersedes the session-storage and schema-location detail the "Prisma adapter" clause left implicit) and ADR-0018 (narrows the "unscoped surface is exactly three functions" sentence — see §4 below). Narrows #26 to 26a; 26b (queue view, request detail, approve/edit/reject, audit) is out of scope here and unaffected by this ADR. The Consequences clause "gains ... `AUTH_TRUST_HOST=true`" is superseded by ADR-0032 (`AUTH_URL` instead — `AUTH_TRUST_HOST` didn't fix the production origin bug it was meant to, and is redundant once `AUTH_URL` is set).
 
 ## Context
 
