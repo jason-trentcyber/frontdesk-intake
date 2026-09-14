@@ -5,8 +5,18 @@ import * as schema from "./schema/index.js";
 
 export type Db = NodePgDatabase<typeof schema>;
 
-export function createDb(connectionString: string): Db {
-  return drizzle(new pg.Pool({ connectionString }), { schema });
+export interface DbOptions {
+  /** Pool size ceiling. Omitted: pg's own default (10) - what api/ and
+   * worker/ have always run with. A consumer whose per-request DB work is
+   * lighter than the others', or that shares a small Postgres
+   * max_connections budget with siblings it wants to leave headroom for,
+   * passes this explicitly rather than inheriting a default sized for a
+   * different consumer. */
+  max?: number;
+}
+
+export function createDb(connectionString: string, options: DbOptions = {}): Db {
+  return drizzle(new pg.Pool({ connectionString, max: options.max }), { schema });
 }
 
 // The only table not scoped by org_id (ADR-0018) - read directly off a

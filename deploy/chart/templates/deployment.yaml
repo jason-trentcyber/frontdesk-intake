@@ -32,6 +32,38 @@ spec:
           env:
             - name: PORT
               value: {{ .Values.web.service.targetPort | quote }}
+            # ADR-0017's env pattern, exactly - copied verbatim from
+            # api-deployment.yaml (ADR-0021, ADR-0027). web/ references
+            # APP_PGUSER + frontdesk-app-password only; it must never
+            # reference frontdesk-password, that key is
+            # frontdesk-db-migrate's alone (ADR-0017, ADR-0019).
+            - name: PGHOST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "frontdesk.postgres.fullname" . }}-connection
+                  key: PGHOST
+            - name: PGPORT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "frontdesk.postgres.fullname" . }}-connection
+                  key: PGPORT
+            - name: PGDATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "frontdesk.postgres.fullname" . }}-connection
+                  key: PGDATABASE
+            - name: PGUSER
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "frontdesk.postgres.fullname" . }}-connection
+                  key: APP_PGUSER
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgres.credentialsSecret }}
+                  key: frontdesk-app-password
+            - name: DATABASE_URL
+              value: "postgresql://$(PGUSER):$(PGPASSWORD)@$(PGHOST):$(PGPORT)/$(PGDATABASE)"
             - name: TURNSTILE_SITE_KEY
               valueFrom:
                 configMapKeyRef:
@@ -46,9 +78,16 @@ spec:
                   # (README.md -> Secrets); #27 is the first real consumer.
                   # Optional so this Deployment isn't blocked on that.
                   optional: true
+          # Split same as api-deployment.yaml, now that web/ holds a DB
+          # credential too (this PR): readiness checks the database
+          # (web/src/app/readyz/route.ts, one SELECT 1) so a pod with a
+          # mis-wired credential is pulled from rotation instead of
+          # serving 500s to every tracking-page visitor; liveness stays on
+          # /healthz (no DB dependency) because a DB outage is not
+          # something restarting this pod would fix.
           readinessProbe:
             httpGet:
-              path: /healthz
+              path: /readyz
               port: http
             initialDelaySeconds: 2
             periodSeconds: 10
