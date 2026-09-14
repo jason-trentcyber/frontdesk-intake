@@ -3,7 +3,7 @@ import { createDb, orgs, requests, type Db } from "@frontdesk/db";
 import { eq, inArray } from "drizzle-orm";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
-import HomePage, { dynamic } from "./page";
+import HomePage, { dynamic, runtime } from "./page";
 
 const ownerUrl = process.env.DATABASE_URL;
 const appUrl = process.env.DATABASE_APP_URL;
@@ -54,7 +54,8 @@ describe.skipIf(!hasEnv)(
       return row;
     }
 
-    it("segment config: never cached", () => {
+    it("segment config: Node runtime, never cached", () => {
+      expect(runtime).toBe("nodejs");
       expect(dynamic).toBe("force-dynamic");
     });
 

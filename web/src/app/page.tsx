@@ -4,6 +4,11 @@ import { getDemoOrg, getDemoQueue } from "../lib/demoQueue";
 import { loadTurnstileSiteKey } from "../lib/env";
 import { statusLabel } from "../lib/tracking";
 
+// pg needs Node's TCP/net APIs; Next's default runtime for a dynamic
+// route can be Edge, which has neither (same reasoning as /t/[token]
+// and /r/[slug] - this route uses getDb() too).
+export const runtime = "nodejs";
+
 // F16's queue is live - the purge CronJob (#28) also means it's often
 // empty by design (deleted after 24h), not a stale cached snapshot of
 // whatever it looked like at build time.
