@@ -13,6 +13,7 @@
     "generate": "drizzle-kit generate",
     "migrate": "tsx src/migrate.ts",
     "seed": "tsx src/seed.ts",
+    "purge": "tsx src/purge.ts",
     "check": "drizzle-kit check"
   },
   "dependencies": {

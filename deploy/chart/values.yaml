@@ -299,6 +299,19 @@ db:
     # derives both orgs' owner emails from this one via plus-addressing.
     ownerEmail: "owner@example.com"
 
+  purge:
+    # #28/F17: nightly demo-org retention (requests/drafts/actions only -
+    # never documents/chunks, the demo org's seeded RAG corpus, which has
+    # no 24h lifetime). 03:30 UTC, 15 minutes after postgres.backups'
+    # 03:15 schedule above, so the two don't contend for I/O on the same
+    # single-node Postgres (ADR-0010) at the same moment. Schedule and
+    # retention are real per-environment knobs, same reasoning as
+    # postgres.backups.schedule/retentionDays just above - not hardcoded
+    # in the image, even though F17 itself only asks for one number.
+    enabled: true
+    schedule: "30 3 * * *"
+    retentionHours: 24
+
 ingress:
   enabled: true
   className: nginx

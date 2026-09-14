@@ -201,3 +201,23 @@ pick it up either.
 {{ include "frontdesk.labels" . }}
 app.kubernetes.io/component: db-migrate
 {{- end -}}
+
+{{/*
+Fixed name, same reasoning as frontdesk.postgres.backupCronJobName:
+#28's acceptance criterion is `kubectl create job
+--from=cronjob/frontdesk-demo-purge`, so the name is part of the
+contract, not derived.
+*/}}
+{{- define "frontdesk.db.purgeCronJobName" -}}
+frontdesk-demo-purge
+{{- end -}}
+
+{{/*
+Distinct component value, same reasoning as frontdesk.postgres.backupLabels
+and frontdesk.db.migrateLabels: this pod must not carry any label a
+Service selects on.
+*/}}
+{{- define "frontdesk.db.purgeLabels" -}}
+{{ include "frontdesk.labels" . }}
+app.kubernetes.io/component: db-purge
+{{- end -}}
