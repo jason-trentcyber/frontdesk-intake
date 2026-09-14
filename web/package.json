@@ -11,24 +11,27 @@
     "pretypecheck": "pnpm --filter @frontdesk/db build",
     "typecheck": "tsc --noEmit",
     "pretest": "pnpm --filter @frontdesk/db build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "pretest:e2e": "pnpm --filter @frontdesk/db build",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@auth/drizzle-adapter": "1.11.3",
     "@frontdesk/db": "workspace:*",
     "drizzle-orm": "0.45.2",
     "next": "^16.3.4",
+    "next-auth": "5.0.0-beta.32",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.63.0",
     "@types/node": "^22.10.2",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
-    "chrome-launcher": "1.2.1",
     "eslint": "^10.10.0",
     "lighthouse": "13.4.1",
     "prettier": "^3.3.3",
-    "puppeteer-core": "25.10.0",
     "typescript": "^6.0.3",
     "vitest": "^2.1.3"
   }

@@ -6,7 +6,7 @@ Format: context, decision, consequences, alternatives rejected. One file per dec
 |---|---|---|
 | 0001 | Runtime: k3s on Hetzner, portable Helm chart | decided; node type superseded by 0010 |
 | 0002 | Ingress and edge: ingress-nginx, cert-manager, Cloudflare in front | decided |
-| 0003 | Auth: Auth.js with Google and GitHub, users in our Postgres | decided; "Prisma adapter" clause superseded by 0018 |
+| 0003 | Auth: Auth.js with Google and GitHub, users in our Postgres | decided; "Prisma adapter" clause superseded by 0018; session-storage + table-location decisions made by 0031 |
 | 0004 | Queue: pgmq in production, SQS adapter tested against LocalStack | decided; second queue (`frontdesk_ingest`) added by 0025 |
 | 0005 | Retrieval: pgvector hybrid search, in-process embeddings | decided; embedding runtime (not the model) changed to ONNX by 0023; `reindex` image and embedding batch size fixed by 0025 |
 | 0006 | LLM routing: OpenRouter primary, Bedrock adapter switch-proven | decided; grep-test scope narrowed by 0024 |
@@ -21,7 +21,7 @@ Format: context, decision, consequences, alternatives rejected. One file per dec
 | 0015 | App-chart values overlays live at `deploy/chart/values-*.yaml`; full RBAC surface for the ADR-0014 deployer Role | decided; RBAC list extended by 0016 |
 | 0016 | Postgres: StatefulSet in the app chart, one pgvector+pgmq image for local and prod, nightly `pg_dump` to a PVC pulled to the VPS; no operator, no bucket | decided; consumer-secrets and config-include clauses superseded by 0017, `batch/jobs` verb list by 0020 |
 | 0017 | Consumer credentials = ConfigMap + per-audience `secretKeyRef`; Postgres config as full `config_file`; amends 0016 | decided |
-| 0018 | Tenancy data layer: Drizzle schema with RLS policies versioned together, `SECURITY DEFINER` entry-point resolvers, migrations via in-cluster `frontdesk-db-migrate` Job; amends 0003 and 0007 | decided; hook-phase clause superseded by 0019, `reindex`-image clause by 0025 |
+| 0018 | Tenancy data layer: Drizzle schema with RLS policies versioned together, `SECURITY DEFINER` entry-point resolvers, migrations via in-cluster `frontdesk-db-migrate` Job; amends 0003 and 0007 | decided; hook-phase clause superseded by 0019, `reindex`-image clause by 0025, "unscoped surface" sentence amended by 0031 |
 | 0019 | `frontdesk-db-migrate` runs `post-install,pre-upgrade` (a `pre-install` hook deadlocks against the Postgres StatefulSet it needs); amends 0018 | decided |
 | 0020 | deployer Role needs `patch` on `batch/jobs` (Helm 4 applies hooks server-side); Helm version pinned in CI; amends 0016 | decided, applied |
 | 0021 | `web/` uses `@frontdesk/db` in-process; `api/` serves external integrations (F3) and owns the queue producer | decided |
@@ -33,3 +33,5 @@ Format: context, decision, consequences, alternatives rejected. One file per dec
 | 0027 | #27 splits: 27a wires `web/` to Postgres via `@frontdesk/db` + ADR-0017's credential pattern and ships `/t/<token>`; 27b ships the public form, landing demo queue and the Lighthouse gate; reaffirms 0021, narrows #27 | decided |
 | 0028 | compose publishes every port on `127.0.0.1` explicitly; a host firewall is not a control for a Docker-published port (DNAT bypasses ufw's `INPUT` chain) — incident 2026-09-13 | decided, applied |
 | 0029 | Lighthouse accessibility gate: a new `lighthouse` CI job, blocking, per-PR, plain `lighthouse` CLI (not `@lhci/cli`) against a real `next build`/`next start`, auditing `/` and `/r/<demo-slug>` only | decided |
+| 0030 | Browser automation for tests: Playwright replaces puppeteer-core/chrome-launcher; ADR-0029's Lighthouse decision unchanged | decided |
+| 0031 | #26 auth design: database sessions via `@auth/drizzle-adapter`, Auth.js tables in a dedicated `auth` Postgres schema, membership re-resolved per request (never cached), three-layer authorization guard (`proxy.ts`, `/app/layout.tsx`, every Server Action); amends 0003 and 0018 | decided |
