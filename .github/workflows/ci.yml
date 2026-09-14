@@ -337,21 +337,21 @@ jobs:
 
       # ADR-0029 audits exactly two URLs: the landing page and the public
       # form for the real seeded demo org (found by is_demo, never a
-      # hardcoded slug - same rule as web/src/lib/demoQueue.ts).
+      # hardcoded slug - same rule as web/src/lib/demoQueue.ts). psql,
+      # not a `node -e require('pg')` one-liner: this step's working
+      # directory is the repo root, where pg is not hoisted (it's a
+      # dependency of db/api, not the root package.json) - ubuntu-latest
+      # ships the postgresql-client package (psql) preinstalled, needing
+      # no extra setup, unlike a bare node script here would.
       - name: Find the demo org's slug
         id: demo-org
         run: |
-          slug=$(node -e "
-            const { Client } = require('pg');
-            (async () => {
-              const client = new Client({ connectionString: process.env.DATABASE_URL });
-              await client.connect();
-              const res = await client.query('select slug from orgs where is_demo = true limit 1');
-              await client.end();
-              if (!res.rows[0]) { console.error('no demo org found - run pnpm seed first'); process.exit(1); }
-              console.log(res.rows[0].slug);
-            })();
-          ")
+          set -euo pipefail
+          slug=$(psql "$DATABASE_URL" -t -A -c "select slug from orgs where is_demo = true limit 1")
+          if [ -z "$slug" ]; then
+            echo "::error::no demo org found - run pnpm seed first" >&2
+            exit 1
+          fi
           echo "slug=$slug" >> "$GITHUB_OUTPUT"
 
       - name: Lighthouse accessibility audit (ADR-0029)
