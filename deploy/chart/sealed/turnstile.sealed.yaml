@@ -1,0 +1,13 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: turnstile
+  namespace: frontdesk
+spec:
+  encryptedData:
+    secret-key: AgCzUJ9U1faR/aqmTp7J4eFq+tto0gc8LCwReEEGqDrId54EoHcA76rF0WWckxVdpQuDatl8TWBk70kFXfBMQWlqtFITob8g0cD7Ze6O1SjoAyABm13S3F1xqWPDDnSnWKH4i210FYsGUIYWWwAT6JhXxWwf+7LOtJ8stz9W7vnbQXErPo14K/slylUvuB9MPBBMxShbOruthW0Veqtx6eXNL6c46pN/+FF8C5UbTVPuhVzn3NgKGh1/ZzNapj/wIhLjN6jAkNpeGCJ6DACKGy2Y7ew8sbX/JgN0vYpYnYxO6ydUmcc2hngNQZIKegWNGz3mL7jgU2Cf82YXpFdZyxKkxF7YXxSX/suJAR3NJnPncf6AmGpFD97HuXJ6o2YvdDYXi4/m9G3ptjmfr6cnazCMrWX0vpJWd8bELepZaOIo1Q1kzDQI5ALZHdfGU0mktSFR4MHXOdSK5ZdMT6zAUjSiOpUdilEXur8e89DdCf5IQLjF/xfHmO4YZrpYPR6dtG/JYYeMNlypkmCz1SV91MyT3+XWFKkvIBw+/8ThKz7edR8HWC6xG8gKyPw2okQn4yz7cIe4L3UBmpgrYbBKP9YqGshQMCBdmX5FwU4wKqrLauOORy2QLC30tLqTXEuN4mo1UfIzHC9ztkCNJuOdRr0ZtTqE/IrwXMsXb2DDdytoU9wUzMfspyUfajEJIRlcT7TR+iAgcPQWJLTl5siq9IHoa2dgSj9Raca5wFhjqKmbaSTVuw==
+  template:
+    metadata:
+      name: turnstile
+      namespace: frontdesk
