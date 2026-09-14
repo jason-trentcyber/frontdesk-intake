@@ -25,6 +25,7 @@
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "eslint": "^10.10.0",
+    "lighthouse": "13.4.1",
     "prettier": "^3.3.3",
     "typescript": "^6.0.3",
     "vitest": "^2.1.3"

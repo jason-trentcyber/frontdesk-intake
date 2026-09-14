@@ -19,4 +19,19 @@ spec:
       ports:
         - protocol: TCP
           port: {{ .Values.api.service.targetPort }}
+    # 27b: web/'s public form submits through api/'s intake path
+    # server-side, pod-to-pod (ADR-0021 - "one enqueue implementation",
+    # not web reimplementing enqueue and not routing back out through the
+    # public Ingress just to re-enter the cluster). web's pods are in
+    # this same namespace, not ingress-nginx's, so they need their own
+    # `from` entry - a bare podSelector (no namespaceSelector) scopes to
+    # this NetworkPolicy's own namespace, same pattern
+    # postgres-networkpolicy.yaml already uses for same-namespace access.
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "frontdesk.web.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.api.service.targetPort }}
 {{- end }}

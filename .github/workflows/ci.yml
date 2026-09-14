@@ -207,6 +207,11 @@ jobs:
       DATABASE_APP_URL: postgresql://frontdesk_app:frontdesk_app@localhost:5432/frontdesk
       MIGRATE_DATABASE_URL: postgresql://frontdesk:frontdesk@localhost:5432/frontdesk
       SEED_OWNER_EMAIL: owner@example.com
+      # 27b: web/src/lib/env.ts requires both, no default - loadEnv()
+      # throws without them, which is exactly what would turn a missing
+      # var here into a loud test failure rather than a silent skip.
+      API_ORIGIN: http://localhost:3001
+      TURNSTILE_SITE_KEY: 0x4AAAAAAEtBmgvARsd60xeS
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -246,6 +251,134 @@ jobs:
             echo "::error::$skipped web/ test(s) skipped - a service container or env var is missing" >&2
             exit 1
           fi
+
+  # ADR-0029: Lighthouse accessibility gate, blocking, per-PR. Own job,
+  # not folded into `web` above: a browser-driven audit is a different
+  # failure mode than a vitest run, and it gets its own named check in
+  # the PR's status list the same way `provider-parity` does. Runs
+  # against a real `next build`/`next start` (production, not `next dev`)
+  # backed by the same chart-pinned Postgres db/api/python/web already
+  # use, so the demo org and its queue are real seed data.
+  lighthouse:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: ghcr.io/jason-trentcyber/frontdesk-postgres@sha256:6b99f66e5de740b1e5cff5726a85e8d06e63d4100bcbdacd74378b22bdb19f83
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: frontdesk
+          # Throwaway CI values, plain strings - not secrets.
+          FRONTDESK_PASSWORD: frontdesk
+          FRONTDESK_APP_PASSWORD: frontdesk_app
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d frontdesk"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://frontdesk:frontdesk@localhost:5432/frontdesk
+      DATABASE_APP_URL: postgresql://frontdesk_app:frontdesk_app@localhost:5432/frontdesk
+      MIGRATE_DATABASE_URL: postgresql://frontdesk:frontdesk@localhost:5432/frontdesk
+      SEED_OWNER_EMAIL: owner@example.com
+      API_ORIGIN: http://localhost:3001
+      TURNSTILE_SITE_KEY: 0x4AAAAAAEtBmgvARsd60xeS
+      PORT: "3000"
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: |
+          pnpm --version
+          pnpm install --frozen-lockfile
+
+      - name: Migrate
+        run: pnpm --filter @frontdesk/db migrate
+
+      - name: Seed
+        run: pnpm seed
+
+      - name: Build web
+        run: pnpm --filter @frontdesk/web build
+
+      - name: Start web
+        run: |
+          set -euo pipefail
+          pnpm --filter @frontdesk/web start &
+          echo $! > /tmp/web.pid
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:3000/healthz >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::web did not become healthy within 30s" >&2
+          exit 1
+
+      # ADR-0029 audits exactly two URLs: the landing page and the public
+      # form for the real seeded demo org (found by is_demo, never a
+      # hardcoded slug - same rule as web/src/lib/demoQueue.ts).
+      - name: Find the demo org's slug
+        id: demo-org
+        run: |
+          slug=$(node -e "
+            const { Client } = require('pg');
+            (async () => {
+              const client = new Client({ connectionString: process.env.DATABASE_URL });
+              await client.connect();
+              const res = await client.query('select slug from orgs where is_demo = true limit 1');
+              await client.end();
+              if (!res.rows[0]) { console.error('no demo org found - run pnpm seed first'); process.exit(1); }
+              console.log(res.rows[0].slug);
+            })();
+          ")
+          echo "slug=$slug" >> "$GITHUB_OUTPUT"
+
+      - name: Lighthouse accessibility audit (ADR-0029)
+        run: |
+          set -euo pipefail
+          fail=0
+          for path in "/" "/r/${{ steps.demo-org.outputs.slug }}"; do
+            safe_name=$(echo "$path" | tr '/' '_')
+            out="/tmp/lighthouse${safe_name}.json"
+            # pnpm exec, not `pnpm run lighthouse -- <args>`: the latter's
+            # extra layer of shell re-parsing corrupts the quoted
+            # --chrome-flags value (Chrome then launches without
+            # --headless and fails for lack of a display) - verified
+            # locally, see ADR-0029. The URL must also be the first
+            # positional arg - lighthouse does not parse one anywhere
+            # else in the argument list.
+            pnpm --filter @frontdesk/web exec lighthouse "http://localhost:3000${path}" \
+              --output=json --output-path="$out" \
+              --chrome-flags="--headless=new --no-sandbox --disable-gpu" \
+              --only-categories=accessibility --quiet
+            node -e "
+              const r = require('$out');
+              const score = r.categories.accessibility.score;
+              console.log('accessibility score for ${path}:', score);
+              if (score < 0.90) {
+                console.log('::error::accessibility score for ${path} is ' + score + ', below the 0.90 gate (ADR-0029)');
+                process.exit(1);
+              }
+            " || fail=1
+          done
+          exit $fail
+
+      - name: Stop web
+        if: always()
+        run: kill "$(cat /tmp/web.pid)" 2>/dev/null || true
 
   # api/'s tests need real backing services, so they run here rather than
   # in `node` (which has none and would silently skip them). ADR-0004 is
