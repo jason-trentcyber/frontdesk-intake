@@ -319,18 +319,15 @@ ingress:
   clusterIssuer: letsencrypt-prod
   tlsSecretName: frontdesk-tls
   annotations:
-    # F1: "Per-IP rate limit at ingress (10/min)." This is an
-    # ingress-nginx feature, not a platform name, so it belongs in the
-    # k3s-agnostic base rather than a values-hetzner.yaml/values-eks.yaml
-    # override - identical on both (ADR-0002, "identical manifests on
-    # EKS"). Distinct from infra/cloudflare/main.tf's Cloudflare-side
-    # rate-limit rule (20 req/10s per IP+colo on /r/*, /api/* - a burst
-    # guard sized for the Free plan's one-rule limit, explicitly NOT this
-    # requirement per that file's own comment). ingress-nginx already
-    # keys on the real visitor IP, not Cloudflare's edge IP:
-    # deploy/bootstrap/values/ingress-nginx.yaml sets
-    # `real-ip-header: CF-Connecting-IP` - verified by reading that file,
-    # not assumed.
+    # F1: "Per-IP rate limit at ingress (10/min)." An ingress-nginx
+    # feature, identical regardless of which platform this chart runs on
+    # (ADR-0002), so it belongs in this base file, not a per-platform
+    # override. Distinct from the edge proxy's own burst-guard rule
+    # (ADR-0002; see infra/'s Terraform and its own comment for why that
+    # rule is a different, smaller limit and not this requirement).
+    # ingress-nginx is already configured (deploy/bootstrap/) to key on
+    # the visitor's real IP rather than the edge proxy's own address -
+    # verified by reading that config, not assumed.
     nginx.ingress.kubernetes.io/limit-rpm: "10"
 
 # Public: safe in a ConfigMap. #27 (public form) is the first real
