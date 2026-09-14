@@ -20,11 +20,29 @@ spec:
     - host: {{ .Values.ingress.host }}
       http:
         paths:
-          # More specific prefix first for readability (ingress-nginx
+          # Most specific prefix first for readability (ingress-nginx
           # sorts by specificity regardless of list order, but a reader
           # shouldn't have to know that). One Ingress, one host, two
           # backends by audience (ADR-0021) - not a second Ingress
           # resource.
+          #
+          # Auth.js's own endpoints live under /api/auth/* IN THE WEB
+          # APP (web/src/app/api/auth/[...nextauth]/route.ts), not in
+          # api/ - despite the /api prefix, which names api/'s surface
+          # (F3, F15) and predates Auth.js entirely. Without this rule,
+          # every /api/auth/* request matches the plain /api prefix
+          # below and is routed to Fastify, which has no such route and
+          # 404s - silently breaking sign-in through the public URL
+          # while `kubectl exec`'ing into the web pod directly still
+          # works, since that path never goes through this Ingress at
+          # all (26a follow-up, #26).
+          - path: /api/auth
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "frontdesk.web.fullname" . }}
+                port:
+                  number: {{ .Values.web.service.port }}
           - path: /api
             pathType: Prefix
             backend:
