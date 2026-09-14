@@ -30,6 +30,7 @@ frontdesk is an AI-assisted request desk for small businesses, built in public a
 | `worker/prompts/` | 0008 sdlc §7, 0005 | Every change runs the eval gate |
 | `evals/` | 0008 | Baseline only raised by a human commit |
 | `.github/` | 0008, 0011, 0014 | Provenance, review agent, gates; Dependabot exempt; deploy.yml joins the tailnet, namespace-scoped kubeconfig |
+| `compose.yaml` | 0028 loopback port bindings, 0004 queue, 0016 postgres image | Local dev only; never produces a shipped artifact. Every published port names an explicit bind address (`"127.0.0.1:5432:5432"`), never the short `"5432:5432"` form, which binds `0.0.0.0`. Off-host reachability is an ADR, not a compose edit. A host firewall is NOT a control here: Docker DNATs published ports through `FORWARD`, never `INPUT`, so a ufw rule reports success and enforces nothing (0028) |
 | `docs/adr/` | `docs/adr/README.md` | Never edit a decided ADR's decision |
 
 ## Commands
