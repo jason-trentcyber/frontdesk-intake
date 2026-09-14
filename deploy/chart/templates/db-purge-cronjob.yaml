@@ -1,0 +1,92 @@
+{{- if and .Values.postgres.enabled .Values.db.purge.enabled }}
+# #28/F17: nightly demo-org retention. Same image as db-migrate-job.yaml
+# (db/Dockerfile's tsc-compiled JS, run with plain `node`, not a tsx/
+# ts-node runtime - see the command below), but as frontdesk_app
+# (APP_PGUSER/frontdesk-app-password) rather than frontdesk
+# (MIGRATE_PGUSER/frontdesk-password): this job only needs SELECT on
+# orgs (already granted) and row-scoped DML on requests (granted by its
+# own org_isolation ALL policy) - no schema privilege the owner role has
+# and the runtime role doesn't. Same ADR-0017 audience as web/api/worker;
+# never frontdesk-password.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "frontdesk.db.purgeCronJobName" . }}
+  labels:
+    {{- include "frontdesk.db.purgeLabels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.db.purge.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    metadata:
+      labels:
+        {{- include "frontdesk.db.purgeLabels" . | nindent 8 }}
+    spec:
+      template:
+        metadata:
+          labels:
+            {{- include "frontdesk.db.purgeLabels" . | nindent 12 }}
+            {{- include "frontdesk.partOf" . | nindent 12 }}
+        spec:
+          restartPolicy: OnFailure
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: purge
+              image: {{ include "frontdesk.db.image" . }}
+              imagePullPolicy: {{ .Values.db.image.pullPolicy }}
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              # Same invocation shape as db/Dockerfile's own CMD
+              # (`node dist/migrate.js && node dist/seed.js`) - this image
+              # ships tsc-compiled JS, not a tsx/ts-node runtime, so
+              # dist/purge.js is what actually exists in the built image.
+              command: ["node", "dist/purge.js"]
+              env:
+                - name: PGHOST
+                  valueFrom:
+                    configMapKeyRef:
+                      name: {{ include "frontdesk.postgres.fullname" . }}-connection
+                      key: PGHOST
+                - name: PGPORT
+                  valueFrom:
+                    configMapKeyRef:
+                      name: {{ include "frontdesk.postgres.fullname" . }}-connection
+                      key: PGPORT
+                - name: PGDATABASE
+                  valueFrom:
+                    configMapKeyRef:
+                      name: {{ include "frontdesk.postgres.fullname" . }}-connection
+                      key: PGDATABASE
+                - name: PGUSER
+                  valueFrom:
+                    configMapKeyRef:
+                      name: {{ include "frontdesk.postgres.fullname" . }}-connection
+                      key: APP_PGUSER
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Values.postgres.credentialsSecret }}
+                      key: frontdesk-app-password
+                - name: DATABASE_URL
+                  value: "postgresql://$(PGUSER):$(PGPASSWORD)@$(PGHOST):$(PGPORT)/$(PGDATABASE)"
+                - name: DEMO_PURGE_RETENTION_HOURS
+                  value: {{ .Values.db.purge.retentionHours | quote }}
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+{{- end }}
