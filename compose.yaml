@@ -16,7 +16,15 @@ services:
       FRONTDESK_PASSWORD: ${FRONTDESK_PASSWORD:-frontdesk}
       FRONTDESK_APP_PASSWORD: ${FRONTDESK_APP_PASSWORD:-frontdesk_app}
     ports:
-      - "5432:5432"
+      # Loopback-only. A bare "5432:5432" binds 0.0.0.0, and Docker's
+      # published ports are DNAT'd in nat/PREROUTING + the DOCKER chain,
+      # which never traverse ufw's INPUT chain - so a host firewall rule
+      # reports success and enforces nothing. On 2026-09-13 this port,
+      # with .env.example's published default superuser password, was
+      # found by a scanner and the local frontdesk database was dropped
+      # and replaced with a ransom note. Every consumer of this port is
+      # local (tests, migrate, seed, psql); nothing off-host needs it.
+      - "127.0.0.1:5432:5432"
     volumes:
       # initdb/ is baked into the image (deploy/postgres/Dockerfile,
       # ADR-0016), not bind-mounted - only the data volume is local state.
@@ -36,7 +44,9 @@ services:
     environment:
       SERVICES: sqs
     ports:
-      - "4566:4566"
+      # Loopback-only, same reasoning as postgres above. LocalStack's
+      # edge port serves an unauthenticated AWS-compatible API on 4566.
+      - "127.0.0.1:4566:4566"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
       interval: 5s
