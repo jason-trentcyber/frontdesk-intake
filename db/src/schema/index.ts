@@ -1,5 +1,6 @@
 export * from "./actions.js";
 export * from "./api-keys.js";
+export * from "./auth.js";
 export * from "./chunks.js";
 export * from "./documents.js";
 export * from "./drafts.js";

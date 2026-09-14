@@ -183,6 +183,10 @@ jobs:
   # skip them. Same chart-pinned image digest as db/api/python. No
   # LocalStack: web has no queue code of its own (ADR-0021 - it enqueues
   # through api/, not directly), so there's no adapter to contract-test.
+  # ADR-0030: this job also runs the Playwright suite (a separate test
+  # runner from vitest, its own step below) - not a second job, since
+  # both need the identical migrated/seeded Postgres this job already
+  # sets up.
   web:
     runs-on: ubuntu-latest
     services:
@@ -249,6 +253,35 @@ jobs:
           echo "skipped=$skipped"
           if [ "$skipped" != "0" ]; then
             echo "::error::$skipped web/ test(s) skipped - a service container or env var is missing" >&2
+            exit 1
+          fi
+
+      # ADR-0030: Playwright's own bundled, unconfined Chromium - not the
+      # runner's system browser (--with-deps installs the OS libraries
+      # Chromium needs on a bare ubuntu-latest image; unlike this repo's
+      # dev VPS, the runner has passwordless sudo, so this doesn't hit
+      # the "not a snap cgroup" problem the old puppeteer-core path had
+      # to work around locally).
+      - name: Install Playwright browser
+        run: pnpm --filter @frontdesk/web exec playwright install --with-deps chromium
+
+      # Each spec builds its own real `next build` + spawns the real
+      # standalone server.js (ADR-0030) - no separate "Build web" step
+      # needed here, unlike node's/lighthouse's jobs. Same
+      # "assert nothing skipped" discipline as the vitest step above and
+      # api's/worker's equivalents (docs/review-rubric.md): Playwright's
+      # JSON reporter has no numPendingTests/numTodoTests fields to
+      # borrow directly, so this reads `stats.skipped` and additionally
+      # asserts the suite didn't silently collect zero tests at all
+      # (a misconfigured testDir/testMatch would otherwise pass here).
+      - name: Playwright e2e (and assert nothing skipped)
+        run: |
+          pnpm --filter @frontdesk/web run test:e2e
+          skipped=$(node -e "const r=require('./web/playwright-report.json');console.log(r.stats.skipped)")
+          total=$(node -e "const r=require('./web/playwright-report.json');console.log(r.stats.expected+r.stats.unexpected+r.stats.skipped+r.stats.flaky)")
+          echo "skipped=$skipped total=$total"
+          if [ "$skipped" != "0" ] || [ "$total" == "0" ]; then
+            echo "::error::Playwright: $skipped skipped, $total total - a service container, env var, or testDir misconfiguration is suspected" >&2
             exit 1
           fi
 

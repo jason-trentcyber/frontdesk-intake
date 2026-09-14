@@ -16,6 +16,10 @@ coverage/
 next-env.d.ts
 *.tsbuildinfo
 
+# Playwright (ADR-0030)
+web/playwright-report.json
+web/test-results/
+
 # python
 .venv/
 __pycache__/

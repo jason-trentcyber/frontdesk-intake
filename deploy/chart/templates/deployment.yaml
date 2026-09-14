@@ -84,6 +84,43 @@ spec:
             # rather than fail loudly.
             - name: API_ORIGIN
               value: "http://{{ include "frontdesk.api.fullname" . }}:{{ .Values.api.service.port }}"
+            # ADR-0031 (#26). Auth.js v5 auto-reads these four by name -
+            # no explicit clientId/clientSecret in web/src/lib/auth.ts.
+            # oauth and auth-secret were sealed by #6/PR #118; this is
+            # their first consumer.
+            - name: AUTH_GOOGLE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: oauth
+                  key: google-id
+            - name: AUTH_GOOGLE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: oauth
+                  key: google-secret
+            - name: AUTH_GITHUB_ID
+              valueFrom:
+                secretKeyRef:
+                  name: oauth
+                  key: github-id
+            - name: AUTH_GITHUB_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: oauth
+                  key: github-secret
+            - name: AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: auth-secret
+                  key: auth-secret
+            # Self-hosted behind ingress-nginx, not a platform Auth.js
+            # auto-detects (Vercel) - without this, Auth.js does not
+            # trust the X-Forwarded-Host header the proxy sets, and the
+            # callback URLs it constructs would not match the real
+            # public origin (ADR-0031, authjs.dev/guides/edge-compatibility
+            # and Auth.js's deployment docs).
+            - name: AUTH_TRUST_HOST
+              value: "true"
           # Split same as api-deployment.yaml, now that web/ holds a DB
           # credential too (this PR): readiness checks the database
           # (web/src/app/readyz/route.ts, one SELECT 1) so a pod with a
