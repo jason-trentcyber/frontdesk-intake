@@ -1,3 +1,72 @@
-export default function HomePage() {
-  return <p>frontdesk — hello</p>;
+import { PublicForm } from "../components/PublicForm";
+import { getDb } from "../lib/db";
+import { getDemoOrg, getDemoQueue } from "../lib/demoQueue";
+import { loadTurnstileSiteKey } from "../lib/env";
+import { statusLabel } from "../lib/tracking";
+
+// pg needs Node's TCP/net APIs; Next's default runtime for a dynamic
+// route can be Edge, which has neither (same reasoning as /t/[token]
+// and /r/[slug] - this route uses getDb() too).
+export const runtime = "nodejs";
+
+// F16's queue is live - the purge CronJob (#28) also means it's often
+// empty by design (deleted after 24h), not a stale cached snapshot of
+// whatever it looked like at build time.
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  const db = getDb();
+  const demoOrg = await getDemoOrg(db);
+  const queue = demoOrg ? await getDemoQueue(db, demoOrg.id) : [];
+  const turnstileSiteKey = loadTurnstileSiteKey();
+
+  return (
+    <main>
+      <h1>frontdesk</h1>
+      <p>
+        An AI-assisted request desk for small businesses: a visitor submits a request, an LLM
+        triages it and drafts a cited reply from the business&apos;s own documents, and staff
+        approve, edit, or reject before anything goes out.
+      </p>
+      <nav aria-label="Project links">
+        <a href="https://github.com/jason-trentcyber/frontdesk-intake">Repo</a>
+        {" · "}
+        <a href="https://github.com/users/jason-trentcyber/projects/1">Board</a>
+        {" · "}
+        <a href="https://github.com/jason-trentcyber/frontdesk-intake/blob/main/REQUIREMENTS.md">Docs</a>
+      </nav>
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "2rem", marginTop: "2rem" }}>
+        <section aria-labelledby="demo-form-heading" style={{ flex: "1 1 20rem" }}>
+          <h2 id="demo-form-heading">Try it - {demoOrg?.name ?? "the demo"}</h2>
+          {demoOrg ? (
+            <PublicForm slug={demoOrg.slug} orgName={demoOrg.name} turnstileSiteKey={turnstileSiteKey} />
+          ) : (
+            <p>The demo isn&apos;t configured right now.</p>
+          )}
+        </section>
+
+        <section aria-labelledby="demo-queue-heading" style={{ flex: "1 1 20rem" }}>
+          <h2 id="demo-queue-heading">Live queue</h2>
+          {queue.length === 0 ? (
+            // Not an edge case: F17 purges demo submissions after 24h,
+            // so this is the state every morning until someone submits.
+            <p>
+              No requests in the last 24 hours - they&apos;re purged on a schedule (F17). Submit
+              the form to see one appear here.
+            </p>
+          ) : (
+            <ul>
+              {queue.map((item) => (
+                <li key={item.id}>
+                  <p>{item.subject}</p>
+                  {item.kind === "approved" ? <p>{item.replyText}</p> : <p>Status: {statusLabel(item.status)}</p>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
+    </main>
+  );
 }

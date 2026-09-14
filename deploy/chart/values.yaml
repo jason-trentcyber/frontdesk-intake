@@ -318,6 +318,45 @@ ingress:
   host: frontdesk.jtrent.dev
   clusterIssuer: letsencrypt-prod
   tlsSecretName: frontdesk-tls
+  annotations:
+    # F1 asks for a 10/min per-IP limit on public-form submissions.
+    # This annotation is NOT that limit, and does not claim to be -
+    # commit 1c06bfd already tried literally 10, host-wide, and reverted
+    # it for exactly the reason repeated here: this Ingress's "/" path
+    # serves the whole app, not just submissions, and a single page load
+    # is several requests, not one. Verified against a real build of
+    # this PR's own landing page, not assumed: 1 HTML document + 8
+    # same-origin JS chunks = 9 requests per view (curl against a real
+    # `next start`, counting <script src> and same-origin <link
+    # rel=preload> tags - the third-party Turnstile script is a
+    # different origin and doesn't count here).
+    #
+    # Nothing sharper is possible at this layer for this specific
+    # requirement: Next's Server Actions POST to the page's own URL
+    # (the public form's submit target is the page it's rendered on),
+    # so page views and form submissions share the same path and the
+    # same rate-limit zone - "/" cannot be split from "/r/*" by path
+    # alone the way F3's separately-addressable REST intake could be.
+    # A literal, precise 10/min-on-submissions-only limit would need to
+    # live at the application layer (inside the Server Action itself),
+    # not here.
+    #
+    # What this annotation actually is: a coarse per-IP abuse guard at
+    # the ingress, sized so a real page load can't self-exhaust it.
+    # ingress-nginx turns limit-rpm into rate=<n>r/m with
+    # burst=<n>*5, nodelay (its own default burst multiplier) - at 120,
+    # that's a 600-request upfront allowance (~66 page loads before any
+    # throttling) and a 2 req/s sustained rate after, comfortably above
+    # anything a real visitor generates and still a real ceiling against
+    # scripted abuse. It is deliberately not 10.
+    #
+    # Distinct from the edge proxy's own burst-guard rule (ADR-0002; see
+    # infra/'s Terraform and its own comment for why that rule is a
+    # different, smaller limit and not this requirement either).
+    # ingress-nginx is already configured (deploy/bootstrap/) to key on
+    # the visitor's real IP rather than the edge proxy's own address -
+    # verified by reading that config, not assumed.
+    nginx.ingress.kubernetes.io/limit-rpm: "120"
 
 # Public: safe in a ConfigMap. #27 (public form) is the first real
 # consumer; the ConfigMap ships now so the chart's env wiring is complete.

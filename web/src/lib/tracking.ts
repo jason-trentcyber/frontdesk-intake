@@ -47,3 +47,18 @@ export async function getTrackingView(db: Db, token: string): Promise<TrackingVi
   }
   return { kind: "status", status: row.status };
 }
+
+// Shared by /t/[token] and the landing page's demo queue (F16) - both
+// render the same non-approved statuses and should say the same thing.
+export function statusLabel(status: NonApprovedStatus): string {
+  switch (status) {
+    case "received":
+      return "Received";
+    case "triaging":
+    case "drafted":
+    case "needs_human":
+      return "In review";
+    case "rejected":
+      return "Reviewed";
+  }
+}

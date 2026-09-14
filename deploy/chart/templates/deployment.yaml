@@ -69,15 +69,21 @@ spec:
                 configMapKeyRef:
                   name: {{ include "frontdesk.web.fullname" . }}
                   key: TURNSTILE_SITE_KEY
-            - name: TURNSTILE_SECRET_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.turnstile.secretName }}
-                  key: {{ .Values.turnstile.secretKey }}
-                  # Not sealed until a human seals it for this namespace
-                  # (README.md -> Secrets); #27 is the first real consumer.
-                  # Optional so this Deployment isn't blocked on that.
-                  optional: true
+            # Mirror of api-deployment.yaml's PUBLIC_WEB_ORIGIN (derived
+            # from ingress.host so it can't drift), for the opposite
+            # direction: web's public-form Server Action calls api/'s
+            # intake path pod-to-pod (ADR-0021 "one enqueue
+            # implementation"), never by leaving the cluster through the
+            # public Ingress and back in. Derived from the api Service's
+            # own name/port, not hardcoded, for the same reason
+            # PUBLIC_WEB_ORIGIN is derived rather than typed twice. No
+            # default in code (web/src/lib/env.ts) - same reasoning
+            # api/src/env.ts gives for PUBLIC_WEB_ORIGIN: a default
+            # necessarily names one environment's address, so a
+            # misconfigured one would silently call the wrong place
+            # rather than fail loudly.
+            - name: API_ORIGIN
+              value: "http://{{ include "frontdesk.api.fullname" . }}:{{ .Values.api.service.port }}"
           # Split same as api-deployment.yaml, now that web/ holds a DB
           # credential too (this PR): readiness checks the database
           # (web/src/app/readyz/route.ts, one SELECT 1) so a pod with a

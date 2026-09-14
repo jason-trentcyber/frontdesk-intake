@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getDb } from "../../../lib/db";
-import { getTrackingView, type NonApprovedStatus } from "../../../lib/tracking";
+import { getTrackingView, statusLabel } from "../../../lib/tracking";
 
 // pg needs Node's TCP/net APIs; Next's default runtime for a dynamic route
 // can be Edge, which has neither.
@@ -49,17 +49,4 @@ export default async function TrackingPage({
       <p>Status: {statusLabel(view.status)}</p>
     </main>
   );
-}
-
-function statusLabel(status: NonApprovedStatus): string {
-  switch (status) {
-    case "received":
-      return "Received";
-    case "triaging":
-    case "drafted":
-    case "needs_human":
-      return "In review";
-    case "rejected":
-      return "Reviewed";
-  }
 }
