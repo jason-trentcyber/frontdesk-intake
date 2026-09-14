@@ -2,7 +2,8 @@
 
 import Script from "next/script";
 import { useActionState } from "react";
-import { INITIAL_SUBMIT_STATE, submitPublicRequest } from "../lib/actions";
+import { submitPublicRequest } from "../lib/actions";
+import { INITIAL_SUBMIT_STATE } from "../lib/submitState";
 
 export interface PublicFormProps {
   slug: string;

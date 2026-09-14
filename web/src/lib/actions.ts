@@ -2,13 +2,15 @@
 
 import { redirect } from "next/navigation";
 import { loadApiOrigin } from "./env";
+import type { SubmitState } from "./submitState";
 
-export interface SubmitState {
-  status: "idle" | "error";
-  message?: string;
-}
-
-export const INITIAL_SUBMIT_STATE: SubmitState = { status: "idle" };
+// Every runtime export of a "use server" file must be an async function -
+// Next builds a callable-action-endpoint table from this module's exports
+// literally, so a non-function export (SubmitState/INITIAL_SUBMIT_STATE
+// used to live here) makes the whole module throw at evaluation time. See
+// web/src/lib/submitState.ts's comment and
+// web/src/app/r/[slug]/submit.e2e.test.ts for the regression this
+// guards against - only `type`-only imports of SubmitState belong here.
 
 function stringField(formData: FormData, name: string): string {
   const value = formData.get(name);
