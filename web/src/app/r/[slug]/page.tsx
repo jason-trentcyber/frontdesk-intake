@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { PublicForm } from "../../../components/PublicForm";
 import { getDb } from "../../../lib/db";
-import { loadEnv } from "../../../lib/env";
+import { loadTurnstileSiteKey } from "../../../lib/env";
 
 // pg needs Node's TCP/net APIs; Next's default runtime for a dynamic
 // route can be Edge, which has neither (same reasoning as /t/[token]).
@@ -26,7 +26,7 @@ export default async function PublicFormPage({ params }: { params: Promise<{ slu
     notFound();
   }
 
-  const { turnstileSiteKey } = loadEnv();
+  const turnstileSiteKey = loadTurnstileSiteKey();
 
   return (
     <main>

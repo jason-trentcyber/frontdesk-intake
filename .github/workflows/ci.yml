@@ -310,6 +310,14 @@ jobs:
       - name: Seed
         run: pnpm seed
 
+      # web/'s pretest/pretypecheck hooks build this as a side effect
+      # elsewhere, but this job's "Build web" step calls `next build`
+      # directly with no such hook - explicit here rather than depending
+      # on another job's ordering (same fix as `node`'s "Build web" step,
+      # #107).
+      - name: Build @frontdesk/db
+        run: pnpm --filter @frontdesk/db build
+
       - name: Build web
         run: pnpm --filter @frontdesk/web build
 
@@ -347,10 +355,19 @@ jobs:
           echo "slug=$slug" >> "$GITHUB_OUTPUT"
 
       - name: Lighthouse accessibility audit (ADR-0029)
+        env:
+          # Not interpolated directly into the script below (the classic
+          # GitHub Actions script-injection pattern - a `${{ }}` expression
+          # is substituted into the raw script text before the shell ever
+          # parses it, so a slug containing shell metacharacters would run
+          # as script rather than being treated as data): passed through
+          # the environment instead, where it's only ever consumed as
+          # shell data (review, #112).
+          DEMO_SLUG: ${{ steps.demo-org.outputs.slug }}
         run: |
           set -euo pipefail
           fail=0
-          for path in "/" "/r/${{ steps.demo-org.outputs.slug }}"; do
+          for path in "/" "/r/${DEMO_SLUG}"; do
             safe_name=$(echo "$path" | tr '/' '_')
             out="/tmp/lighthouse${safe_name}.json"
             # pnpm exec, not `pnpm run lighthouse -- <args>`: the latter's
@@ -364,12 +381,19 @@ jobs:
               --output=json --output-path="$out" \
               --chrome-flags="--headless=new --no-sandbox --disable-gpu" \
               --only-categories=accessibility --quiet
-            node -e "
-              const r = require('$out');
+            # $path (carrying DEMO_SLUG on the second iteration) is passed
+            # through the environment here too, not interpolated into the
+            # script text - same reasoning as this step's own `env:`
+            # block above, applied consistently rather than just at the
+            # first hop.
+            LH_OUT="$out" LH_PATH="$path" node -e "
+              const out = process.env.LH_OUT;
+              const path = process.env.LH_PATH;
+              const r = require(out);
               const score = r.categories.accessibility.score;
-              console.log('accessibility score for ${path}:', score);
+              console.log('accessibility score for ' + path + ':', score);
               if (score < 0.90) {
-                console.log('::error::accessibility score for ${path} is ' + score + ', below the 0.90 gate (ADR-0029)');
+                console.log('::error::accessibility score for ' + path + ' is ' + score + ', below the 0.90 gate (ADR-0029)');
                 process.exit(1);
               }
             " || fail=1

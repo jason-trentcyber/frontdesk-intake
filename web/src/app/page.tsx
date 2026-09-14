@@ -1,7 +1,7 @@
 import { PublicForm } from "../components/PublicForm";
 import { getDb } from "../lib/db";
 import { getDemoOrg, getDemoQueue } from "../lib/demoQueue";
-import { loadEnv } from "../lib/env";
+import { loadTurnstileSiteKey } from "../lib/env";
 import { statusLabel } from "../lib/tracking";
 
 // F16's queue is live - the purge CronJob (#28) also means it's often
@@ -13,7 +13,7 @@ export default async function HomePage() {
   const db = getDb();
   const demoOrg = await getDemoOrg(db);
   const queue = demoOrg ? await getDemoQueue(db, demoOrg.id) : [];
-  const { turnstileSiteKey } = loadEnv();
+  const turnstileSiteKey = loadTurnstileSiteKey();
 
   return (
     <main>

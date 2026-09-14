@@ -1,14 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { INITIAL_SUBMIT_STATE, submitPublicRequest } from "./actions";
 
-const ENV_KEYS = ["DATABASE_URL", "API_ORIGIN", "TURNSTILE_SITE_KEY"] as const;
+// Only API_ORIGIN - submitPublicRequest calls loadApiOrigin(), not the
+// old combined loadEnv(), so it has no reason to need DATABASE_URL or
+// TURNSTILE_SITE_KEY at all (review, #112: loadEnv() bundling all three
+// forced every consumer, including this one, to provide vars it never
+// used).
+const ENV_KEYS = ["API_ORIGIN"] as const;
 const originalEnv: Partial<Record<(typeof ENV_KEYS)[number], string>> = {};
 
 beforeEach(() => {
   for (const key of ENV_KEYS) originalEnv[key] = process.env[key];
-  process.env.DATABASE_URL = "postgresql://frontdesk:frontdesk@localhost:5432/frontdesk";
   process.env.API_ORIGIN = "http://frontdesk-api:80";
-  process.env.TURNSTILE_SITE_KEY = "0xsitekey";
 });
 
 afterEach(() => {

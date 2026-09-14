@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { loadEnv } from "./env";
+import { loadApiOrigin } from "./env";
 
 export interface SubmitState {
   status: "idle" | "error";
@@ -52,7 +52,7 @@ export async function submitPublicRequest(
   if (requesterName) payload.requesterName = requesterName;
   if (requesterEmail) payload.requesterEmail = requesterEmail;
 
-  const { apiOrigin } = loadEnv();
+  const apiOrigin = loadApiOrigin();
 
   let res: Response;
   try {

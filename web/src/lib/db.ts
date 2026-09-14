@@ -1,5 +1,5 @@
 import { createDb, type Db } from "@frontdesk/db";
-import { loadEnv } from "./env";
+import { loadDatabaseUrl } from "./env";
 
 // Postgres's own config (deploy/chart/values.yaml postgres.config.
 // max_connections: 60) is a fixed budget shared, on one node, with api/'s
@@ -23,7 +23,7 @@ declare global {
 
 export function getDb(): Db {
   if (!globalThis.__frontdeskDb) {
-    globalThis.__frontdeskDb = createDb(loadEnv().databaseUrl, { max: POOL_MAX });
+    globalThis.__frontdeskDb = createDb(loadDatabaseUrl(), { max: POOL_MAX });
   }
   return globalThis.__frontdeskDb;
 }
