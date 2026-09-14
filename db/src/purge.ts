@@ -74,7 +74,7 @@ export async function purgeDemoOrgs(db: Db, options: PurgeOptions): Promise<Purg
 async function purgeOrgRequests(db: Db, orgId: string, cutoff: Date, batchSize: number): Promise<number> {
   let total = 0;
   for (;;) {
-    const deletedIds = await forOrg(db, orgId, async (tx, scopedOrgId) => {
+    const { selectedCount, deletedCount } = await forOrg(db, orgId, async (tx, scopedOrgId) => {
       // AGENTS.md: "Every query on a tenant table includes org_id. No
       // exceptions" - RLS (via forOrg's set_config) already scopes both
       // statements below to this org, but org_id is still explicit in
@@ -85,17 +85,44 @@ async function purgeOrgRequests(db: Db, orgId: string, cutoff: Date, batchSize: 
         .where(and(eq(requests.orgId, scopedOrgId), lt(requests.createdAt, cutoff)))
         .orderBy(asc(requests.createdAt))
         .limit(batchSize);
-      if (stale.length === 0) return [];
+      if (stale.length === 0) return { selectedCount: 0, deletedCount: 0 };
 
       const ids = stale.map((r) => r.id);
-      await tx.delete(requests).where(and(eq(requests.orgId, scopedOrgId), inArray(requests.id, ids)));
-      return ids;
+      // The count that matters is what the DELETE actually did, not how
+      // many ids the SELECT handed it - requests has an org_isolation
+      // "all" policy today, but drafts/actions prove a table can lose its
+      // delete grant/policy without anything else in this file noticing.
+      // Inferring "deleted" from the selected id list would make this
+      // code exactly as blind to that as a bare `DELETE FROM drafts`
+      // would have been - result.rowCount is what a no-op DELETE reports
+      // honestly (0), where the selected-ids count would have reported
+      // the full batch regardless of what actually happened.
+      const result = await tx
+        .delete(requests)
+        .where(and(eq(requests.orgId, scopedOrgId), inArray(requests.id, ids)));
+      return { selectedCount: ids.length, deletedCount: result.rowCount ?? 0 };
     });
 
-    total += deletedIds.length;
+    if (deletedCount !== selectedCount) {
+      // The only ways this happens: a policy/grant change narrowed what
+      // this role can delete from requests, or something else deleted
+      // some of the same rows concurrently between the SELECT and the
+      // DELETE. Both are worth a human seeing, not averaging out.
+      logger.warn("demo purge: selected more rows than were deleted", {
+        orgId,
+        selectedCount,
+        deletedCount,
+      });
+    }
+
+    total += deletedCount;
     // A short batch means this was the last one - no need for a trailing
-    // empty-batch round trip to confirm it.
-    if (deletedIds.length < batchSize) break;
+    // empty-batch round trip to confirm it. Checked against deletedCount,
+    // not selectedCount: if a batch selects a full page but deletes
+    // nothing (the anomaly above), the same rows would be selected again
+    // next iteration forever - deletedCount actually shrinks to 0, which
+    // is what has to end the loop.
+    if (deletedCount < batchSize) break;
   }
   return total;
 }

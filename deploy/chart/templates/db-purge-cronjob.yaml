@@ -24,6 +24,16 @@ spec:
       labels:
         {{- include "frontdesk.db.purgeLabels" . | nindent 8 }}
     spec:
+      # Same reasoning as db-migrate-job.yaml's activeDeadlineSeconds:
+      # concurrencyPolicy: Forbid means a run that never finishes blocks
+      # every subsequent night's run too, not just this one - a stuck
+      # batch loop (a narrowed requests policy that made an earlier
+      # version of this job's DELETE a no-op also made its loop never
+      # terminate, #110 review) or a long lock wait on the shared
+      # single-node Postgres are exactly the failure modes this bounds.
+      # 5 minutes is generous for 500-row batches against even a large
+      # overdue backlog; a run still going past that is stuck, not slow.
+      activeDeadlineSeconds: 300
       template:
         metadata:
           labels:
