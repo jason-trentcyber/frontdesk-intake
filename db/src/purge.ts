@@ -100,7 +100,10 @@ async function purgeOrgRequests(db: Db, orgId: string, cutoff: Date, batchSize: 
   return total;
 }
 
-function retentionHours(): number {
+// Exported for purge.test.ts only - env parsing needs no live Postgres,
+// so it's tested separately from purgeDemoOrgs rather than only via the
+// CLI entrypoint below.
+export function retentionHours(): number {
   const raw = process.env.DEMO_PURGE_RETENTION_HOURS;
   if (raw === undefined) return 24;
   const parsed = Number(raw);

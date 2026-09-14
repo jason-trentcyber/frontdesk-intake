@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { eq, inArray } from "drizzle-orm";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { createDb, type Db } from "./client.js";
-import { purgeDemoOrgs } from "./purge.js";
+import { purgeDemoOrgs, retentionHours } from "./purge.js";
 import { actions, drafts, orgs, requests } from "./schema/index.js";
 import { seedDatabase } from "./seed.js";
 
@@ -13,6 +13,32 @@ const hasEnv = Boolean(ownerUrl && appUrl);
 function hoursAgo(hours: number): Date {
   return new Date(Date.now() - hours * 60 * 60 * 1000);
 }
+
+// No Postgres needed - pure env parsing, always runs.
+describe("retentionHours", () => {
+  const KEY = "DEMO_PURGE_RETENTION_HOURS";
+  const original = process.env[KEY];
+
+  afterEach(() => {
+    if (original === undefined) delete process.env[KEY];
+    else process.env[KEY] = original;
+  });
+
+  it("defaults to 24 when unset", () => {
+    delete process.env[KEY];
+    expect(retentionHours()).toBe(24);
+  });
+
+  it("uses the env var when it's a positive number", () => {
+    process.env[KEY] = "6";
+    expect(retentionHours()).toBe(6);
+  });
+
+  it.each(["0", "-1", "not-a-number", ""])("throws on an invalid value (%s)", (value) => {
+    process.env[KEY] = value;
+    expect(() => retentionHours()).toThrow(/DEMO_PURGE_RETENTION_HOURS must be a positive number/);
+  });
+});
 
 // Needs a live, migrated, seeded Postgres (both orgs, ADR-0018) - skips
 // with a named reason rather than failing, same pattern as
@@ -80,6 +106,12 @@ describe.skipIf(!hasEnv)(
         await ownerDb.delete(orgs).where(inArray(orgs.id, createdOrgIds));
         createdOrgIds.length = 0;
       }
+      // Belt and braces on top of the "no demo org" test's own
+      // try/finally: this runs after every test regardless of outcome,
+      // so even a crash inside that one test's try block can't leave
+      // bright-smile-dental permanently misclassified for whatever runs
+      // next in this file or a later `pnpm test`.
+      await ownerDb.update(orgs).set({ isDemo: true }).where(eq(orgs.id, demoOrgId));
       // Real seed rows for the real demo org may have been swept up as a
       // side effect of exercising the real cutoff semantics against it
       // (deliberate - see the "purges stale requests" test below).
