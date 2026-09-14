@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { INITIAL_SUBMIT_STATE, submitPublicRequest } from "./actions";
+import { submitPublicRequest } from "./actions";
+import { INITIAL_SUBMIT_STATE } from "./submitState";
 
 // Only API_ORIGIN - submitPublicRequest calls loadApiOrigin(), not the
 // old combined loadEnv(), so it has no reason to need DATABASE_URL or
