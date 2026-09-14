@@ -157,6 +157,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: frontdesk-web
+  labels:
+    app.kubernetes.io/component: web
 spec:
   template:
     spec:

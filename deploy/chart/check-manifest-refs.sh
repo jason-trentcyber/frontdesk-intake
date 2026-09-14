@@ -152,9 +152,21 @@ fi
 # sets for AUTH_URL must equal "https://" plus the same host the Ingress
 # resource (rendered right above) actually serves - not just "present",
 # which would pass even if it silently drifted from the real public origin.
+#
+# Scoped to the Deployment document whose component label is "web" (same
+# shape as Check 2's Service scoping), not the first "name: AUTH_URL" found
+# anywhere in the manifest - a second, unrelated AUTH_URL reference added
+# elsewhere in the future (api/ or worker/ have no reason to need one today,
+# but nothing stops a future template from adding one) would otherwise be
+# able to satisfy this check while web's own value silently drifted wrong.
 ingress_host="$(awk '/^kind: Ingress$/ { f = 1 } f && /^[[:space:]]*- host: / { sub(/^[[:space:]]*- host: /, ""); print; exit }' "$manifest")"
-auth_url_value="$(awk '/name: AUTH_URL$/ { getline; print; exit }' "$manifest" \
-  | sed -n 's/^[[:space:]]*value: "\(.*\)"$/\1/p')"
+auth_url_value="$(awk '
+  /^---/ { in_deploy = 0; is_web = 0 }
+  /^kind: Deployment$/ { in_deploy = 1 }
+  in_deploy && /app\.kubernetes\.io\/component: web$/ { is_web = 1 }
+  in_deploy && is_web && /name: AUTH_URL$/ { want = 1; next }
+  want { print; exit }
+' "$manifest" | sed -n 's/^[[:space:]]*value: "\(.*\)"$/\1/p')"
 
 if [ -z "$ingress_host" ]; then
   echo "ERROR: could not find the Ingress host in $manifest" >&2
