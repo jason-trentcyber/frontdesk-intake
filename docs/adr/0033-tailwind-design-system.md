@@ -48,3 +48,42 @@ This is a new dependency, so per `AGENTS.md` ("Do not add dependencies... withou
 
   Confirmed via the same run's per-audit results that `color-contrast`, `button-name`, `label`, and `html-has-lang` each scored 1 individually, not just the rolled-up category score.
 - Every existing `web/` vitest suite and both Playwright specs (`web/e2e/submit.spec.ts`, `web/e2e/cross-org-isolation.spec.ts`) stay green with no selector changes.
+
+## Addendum — 2026-09-15: page chrome (PR #123)
+
+The Decision above specifies the root layout as exactly one `max-w-4xl`
+container wrapping `{children}`, and that is what #121 shipped. Reviewing the
+result on a running browser rather than in the JSX showed the gap that
+description leaves: with no header and no footer, every surface began at the
+top-left of an empty `slate-50` field, which reads as unfinished regardless of
+how well the content inside it is styled. The short surfaces are worst — the
+tracking page was ~170px of content in an 800px viewport.
+
+PR #123 therefore adds a `<header>` and `<footer>` around that same container
+and makes `body` a `flex min-h-screen flex-col` with `flex-1` on the content
+wrapper, so the footer pins to the bottom of short pages. This extends the
+decision rather than reversing it: the container itself, its `max-w-4xl` width
+and padding, and the "Tailwind's own scale, no second token system" rule are
+all unchanged, and the chrome introduces no new tokens, dependencies or
+animation. It is recorded here because the Decision text described the layout
+exhaustively, so a reader comparing this ADR against the code would otherwise
+find markup the ADR does not account for.
+
+No header nav and no "Sign in" link: `/app` is staff-only and would dead-end a
+visitor at an auth wall, and an empty nav reads worse than none. Revisit when
+there is a second public destination worth linking to.
+
+Re-running ADR-0029's gate the same way (real `next build` + the standalone
+server, seeded Postgres, `--only-categories=accessibility`) with the chrome in
+place:
+
+```
+accessibility score for /:                      1.0
+accessibility score for /r/bright-smile-dental:  1.0
+accessibility score for /t/<token>:              1.0
+```
+
+Zero failing audits on all three. `/t/<token>` is included because #123 changed
+it most, and because this ADR's Consequences section flagged extending the gate
+to it as an open question — the score is recorded here as evidence for that
+decision, not as a change to the gate, which remains as ADR-0029 defines it.

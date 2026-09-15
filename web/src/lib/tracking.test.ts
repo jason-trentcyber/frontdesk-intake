@@ -1,8 +1,56 @@
 import { randomUUID } from "node:crypto";
-import { createDb, drafts, requests, type Db } from "@frontdesk/db";
+import { createDb, drafts, requestStatus, requests, type Db } from "@frontdesk/db";
 import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
-import { getTrackingView } from "./tracking";
+import {
+  getTrackingView,
+  statusDescription,
+  statusLabel,
+  type NonApprovedStatus,
+} from "./tracking";
+
+// Pure functions - no database, so these run wherever `pnpm test` runs,
+// unlike the getTrackingView suite below.
+describe("statusLabel / statusDescription (public tracking copy)", () => {
+  // Derived from the enum, not hand-listed: if a status is ever added to
+  // db/src/schema/enums.ts this array grows and these tests fail until the
+  // copy covers it. A hand-written list would silently keep passing and
+  // ship a blank status page.
+  const nonApproved = requestStatus.enumValues.filter(
+    (s): s is NonApprovedStatus => s !== "approved",
+  );
+  const inReview: NonApprovedStatus[] = ["triaging", "drafted", "needs_human"];
+
+  it("covers every non-approved status in the enum", () => {
+    expect(nonApproved.length).toBeGreaterThan(0);
+    for (const status of nonApproved) {
+      expect(statusLabel(status), `statusLabel(${status})`).toBeTruthy();
+      expect(statusDescription(status), `statusDescription(${status})`).toBeTruthy();
+    }
+  });
+
+  it("collapses triaging/drafted/needs_human into one visitor-facing state", () => {
+    // The point of the collapse (see TrackingView's comment): a visitor must
+    // not be able to infer that a draft exists but is being withheld, so
+    // these three are indistinguishable in both label and description.
+    expect(new Set(inReview.map(statusLabel)).size).toBe(1);
+    expect(new Set(inReview.map(statusDescription)).size).toBe(1);
+  });
+
+  it("promises no response window in any state", () => {
+    // Nothing here guarantees a turnaround - no SLA, no scheduler. Copy
+    // saying "within 24 hours" would be a claim the product cannot keep.
+    for (const status of nonApproved) {
+      expect(statusDescription(status), status).not.toMatch(
+        /\b(hours?|days?|minutes?|shortly|soon)\b/i,
+      );
+    }
+  });
+
+  it("rejected does not promise a reply is coming", () => {
+    expect(statusDescription("rejected")).toMatch(/not be replying/i);
+  });
+});
 
 const ownerUrl = process.env.DATABASE_URL;
 const appUrl = process.env.DATABASE_APP_URL;
