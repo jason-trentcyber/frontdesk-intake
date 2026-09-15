@@ -1,0 +1,517 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "frontdesk — System Architecture",
+    "output": "architecture.html",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1300,
+      620
+    ],
+    "views": [
+      {
+        "id": "request-path",
+        "label": "Request path",
+        "focus": [
+          "browser",
+          "integration",
+          "cloudflare",
+          "ingress",
+          "web",
+          "api",
+          "postgres"
+        ],
+        "note": "Two entry points reach one origin through Cloudflare; api is the only queue producer."
+      },
+      {
+        "id": "triage-pipeline",
+        "label": "Triage pipeline",
+        "focus": [
+          "postgres",
+          "worker",
+          "openrouter"
+        ],
+        "note": "The worker dequeues, retrieves and drafts, then writes results back to Postgres."
+      },
+      {
+        "id": "switch-proof",
+        "label": "Switch-proof adapters",
+        "focus": [
+          "api",
+          "worker",
+          "openrouter",
+          "bedrock",
+          "sqs"
+        ],
+        "note": "LLM_PROVIDER and QUEUE_PROVIDER each swap one adapter behind an unchanged interface."
+      },
+      {
+        "id": "delivery-ops",
+        "label": "Delivery and operations",
+        "focus": [
+          "github_actions",
+          "db_migrate",
+          "sealed_secrets",
+          "observability",
+          "node_exporter"
+        ],
+        "note": "CI gates the deploy, Helm runs the migrate Job, secrets stay sealed, monitoring lives off the node."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "oauth",
+      "type": "security",
+      "label": "Google / GitHub OAuth",
+      "sublabel": "Auth.js providers",
+      "pos": [
+        557,
+        16
+      ],
+      "size": [
+        170,
+        56
+      ]
+    },
+    {
+      "id": "browser",
+      "type": "external",
+      "label": "Requester & Staff",
+      "sublabel": "Browser",
+      "pos": [
+        24,
+        200
+      ],
+      "size": [
+        140,
+        64
+      ]
+    },
+    {
+      "id": "web",
+      "type": "frontend",
+      "label": "web",
+      "sublabel": "Next.js + Auth.js",
+      "pos": [
+        568,
+        200
+      ],
+      "size": [
+        148,
+        64
+      ],
+      "tag": "form · tracking · staff UI"
+    },
+    {
+      "id": "openrouter",
+      "type": "external",
+      "label": "OpenRouter",
+      "sublabel": "Claude Haiku 4.5",
+      "pos": [
+        1122,
+        200
+      ],
+      "size": [
+        154,
+        64
+      ],
+      "tag": "live · $10/mo cap"
+    },
+    {
+      "id": "cloudflare",
+      "type": "cloud",
+      "label": "Cloudflare",
+      "sublabel": "WAF · Turnstile",
+      "pos": [
+        200,
+        200
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "tag": "ADR-0002"
+    },
+    {
+      "id": "ingress",
+      "type": "security",
+      "label": "ingress-nginx",
+      "sublabel": "cert-manager",
+      "pos": [
+        386,
+        200
+      ],
+      "size": [
+        146,
+        64
+      ],
+      "tag": "F1 limit-rpm"
+    },
+    {
+      "id": "postgres",
+      "type": "database",
+      "label": "Postgres",
+      "sublabel": "pgvector + pgmq",
+      "pos": [
+        752,
+        200
+      ],
+      "size": [
+        146,
+        64
+      ],
+      "tag": "RLS enforced"
+    },
+    {
+      "id": "worker",
+      "type": "backend",
+      "label": "worker",
+      "sublabel": "Python · asyncpg",
+      "pos": [
+        934,
+        200
+      ],
+      "size": [
+        152,
+        64
+      ],
+      "tag": "single process"
+    },
+    {
+      "id": "integration",
+      "type": "external",
+      "label": "Integration Partner",
+      "sublabel": "API client (F3)",
+      "pos": [
+        24,
+        320
+      ],
+      "size": [
+        140,
+        62
+      ]
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "api",
+      "sublabel": "Fastify",
+      "pos": [
+        568,
+        320
+      ],
+      "size": [
+        148,
+        62
+      ],
+      "tag": "sole queue producer"
+    },
+    {
+      "id": "bedrock",
+      "type": "external",
+      "label": "AWS Bedrock",
+      "sublabel": "Claude Haiku 4.5",
+      "pos": [
+        1122,
+        320
+      ],
+      "size": [
+        154,
+        62
+      ],
+      "tag": "switch-proof · not live"
+    },
+    {
+      "id": "sqs",
+      "type": "messagebus",
+      "label": "Amazon SQS",
+      "sublabel": "LocalStack-tested",
+      "pos": [
+        386,
+        430
+      ],
+      "size": [
+        146,
+        62
+      ],
+      "tag": "switch-proof · not live"
+    },
+    {
+      "id": "sealed_secrets",
+      "type": "security",
+      "label": "sealed-secrets",
+      "sublabel": "controller",
+      "pos": [
+        568,
+        430
+      ],
+      "size": [
+        148,
+        62
+      ],
+      "tag": "ciphertext in git"
+    },
+    {
+      "id": "db_migrate",
+      "type": "backend",
+      "label": "frontdesk-db-migrate",
+      "sublabel": "Helm hook Job",
+      "pos": [
+        743,
+        430
+      ],
+      "size": [
+        164,
+        62
+      ],
+      "tag": "drizzle migrate + seed"
+    },
+    {
+      "id": "node_exporter",
+      "type": "cloud",
+      "label": "node-exporter",
+      "sublabel": "hostNetwork :9100",
+      "pos": [
+        934,
+        430
+      ],
+      "size": [
+        152,
+        62
+      ]
+    },
+    {
+      "id": "github_actions",
+      "type": "cloud",
+      "label": "GitHub Actions",
+      "sublabel": "CI · review · deploy",
+      "pos": [
+        542,
+        530
+      ],
+      "size": [
+        200,
+        62
+      ],
+      "tag": "6 guardrails"
+    },
+    {
+      "id": "observability",
+      "type": "cloud",
+      "label": "Prometheus + Grafana",
+      "sublabel": "VPS, off-node",
+      "pos": [
+        934,
+        530
+      ],
+      "size": [
+        196,
+        62
+      ],
+      "tag": "ADR-0026"
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "k3s on Hetzner cx23 · single node",
+      "wraps": [
+        "ingress",
+        "web",
+        "api",
+        "postgres",
+        "worker",
+        "sqs",
+        "sealed_secrets",
+        "db_migrate",
+        "node_exporter"
+      ],
+      "pad": 26
+    },
+    {
+      "kind": "security-group",
+      "label": "RLS-scoped tenant data",
+      "wraps": [
+        "postgres"
+      ],
+      "pad": 16
+    }
+  ],
+  "connections": [
+    {
+      "id": "browser-cloudflare",
+      "from": "browser",
+      "to": "cloudflare",
+      "label": "HTTPS",
+      "variant": "emphasis"
+    },
+    {
+      "id": "integration-cloudflare",
+      "from": "integration",
+      "to": "cloudflare",
+      "label": "POST /api/v1/orgs/:slug/requests",
+      "variant": "emphasis"
+    },
+    {
+      "id": "cloudflare-ingress",
+      "from": "cloudflare",
+      "to": "ingress",
+      "label": "TLS strict",
+      "variant": "emphasis",
+      "labelDy": -58
+    },
+    {
+      "id": "ingress-web",
+      "from": "ingress",
+      "to": "web",
+      "label": "/ and /api/auth",
+      "labelDy": -58
+    },
+    {
+      "id": "ingress-api",
+      "from": "ingress",
+      "to": "api",
+      "label": "/api",
+      "labelDy": 54,
+      "labelDx": -96
+    },
+    {
+      "id": "web-oauth",
+      "from": "web",
+      "to": "oauth",
+      "label": "OAuth sign-in (staff)",
+      "variant": "security",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "web-api",
+      "from": "web",
+      "to": "api",
+      "label": "submit intake (server-side)",
+      "labelDy": 28
+    },
+    {
+      "id": "web-postgres",
+      "from": "web",
+      "to": "postgres",
+      "label": "reads/writes via forOrg()",
+      "labelDy": -58
+    },
+    {
+      "id": "api-postgres",
+      "from": "api",
+      "to": "postgres",
+      "label": "enqueue via pgmq (send)",
+      "labelAt": [
+        734,
+        292
+      ]
+    },
+    {
+      "id": "worker-postgres",
+      "from": "worker",
+      "to": "postgres",
+      "label": "dequeue (pgmq) · for_org()",
+      "labelDy": -58
+    },
+    {
+      "id": "worker-openrouter",
+      "from": "worker",
+      "to": "openrouter",
+      "label": "complete() — LLMProvider",
+      "variant": "emphasis",
+      "labelDy": -58
+    },
+    {
+      "id": "worker-bedrock",
+      "from": "worker",
+      "to": "bedrock",
+      "label": "LLM_PROVIDER=bedrock",
+      "variant": "dashed",
+      "labelAt": [
+        1104,
+        292
+      ]
+    },
+    {
+      "id": "api-sqs",
+      "from": "api",
+      "to": "sqs",
+      "label": "QUEUE_PROVIDER=sqs",
+      "variant": "dashed",
+      "labelAt": [
+        550,
+        400
+      ]
+    },
+    {
+      "id": "sealed-api",
+      "from": "sealed_secrets",
+      "to": "api",
+      "label": "SealedSecret → Secret",
+      "variant": "security",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "labelDx": 40
+    },
+    {
+      "id": "migrate-postgres",
+      "from": "db_migrate",
+      "to": "postgres",
+      "label": "migrate + seed",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "actions-migrate",
+      "from": "github_actions",
+      "to": "db_migrate",
+      "label": "helm upgrade over the tailnet, images pinned by digest",
+      "variant": "emphasis",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "observability-node",
+      "from": "observability",
+      "to": "node_exporter",
+      "label": "scrape :9100 over the tailnet",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "bottom"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Request path & tenancy",
+      "items": [
+        "One Ingress splits /api to Fastify; / and /api/auth to Next.js",
+        "web submits through api server-side — api is the sole queue producer (ADR-0021)",
+        "RLS compares org_id to current_org_id() on every tenant table (ADR-0018)"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Switch-proof adapters",
+      "items": [
+        "LLM_PROVIDER swaps OpenRouter ↔ Bedrock behind one interface (ADR-0006)",
+        "QUEUE_PROVIDER swaps pgmq ↔ SQS behind one interface (ADR-0004)",
+        "A provider-parity CI job proves the unwired adapters still match"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Delivery & operations",
+      "items": [
+        "Deploy runs only after CI is green on main, over the tailnet (ADR-0014)",
+        "Secrets live in git as SealedSecret ciphertext, decrypted in-cluster",
+        "Prometheus and Grafana run off-node, so graphs outlive the node (ADR-0026)"
+      ]
+    }
+  ]
+}

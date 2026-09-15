@@ -10,7 +10,14 @@ Live site: `https://frontdesk.jtrent.dev` (not yet) · Board: [github.com/users/
 
 ## Architecture
 
-_Diagram pending (M2)._ Short version: Next.js web + Fastify API + Python worker on one Helm chart, k3s on a single Hetzner node, Postgres 16 with pgvector (retrieval) and pgmq (queue), Cloudflare at the edge, OpenRouter for the LLM with a switch-proven Bedrock adapter. Decisions and rejected alternatives are in the ADRs.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/architecture-dark.png">
+  <img alt="frontdesk system architecture: browser and API clients enter through Cloudflare and ingress-nginx into a single-node k3s cluster running web (Next.js), api (Fastify), a Python worker and Postgres with pgvector and pgmq; GitHub Actions deploys over the tailnet and Prometheus scrapes the node from off-host." src="docs/diagrams/architecture-light.png">
+</picture>
+
+**[Open the interactive version](https://jason-trentcyber.github.io/frontdesk-intake/architecture.html)** — pan, zoom, search, trace a relationship, or step through four guided views (request path, triage pipeline, switch-proof adapters, delivery and operations).
+
+Next.js web + Fastify API + Python worker on one Helm chart, k3s on a single Hetzner node, Postgres 16 with pgvector (retrieval) and pgmq (queue), Cloudflare at the edge, OpenRouter for the LLM with a switch-proven Bedrock adapter. Decisions and rejected alternatives are in the ADRs; what the diagram asserts and where it simplifies is in [`docs/diagrams/architecture-assumptions.md`](docs/diagrams/architecture-assumptions.md).
 
 ## The AI-first SDLC story
 

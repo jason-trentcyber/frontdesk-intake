@@ -1,0 +1,78 @@
+name: pages
+
+# Publishes the interactive architecture diagram (ADR-0034). The artifact is
+# a single self-contained HTML file with no build step - this workflow only
+# uploads docs/diagrams/ and asks Pages to serve it.
+#
+# Deliberately NOT part of ci.yml: this touches no code, runs no test, and
+# must not gate a PR. It also can't run on pull_request - deploy-pages needs
+# the `pages: write` permission and the github-pages environment, neither of
+# which a fork PR may have.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/diagrams/**"
+      - ".github/workflows/pages.yml"
+  # Manual trigger so the site can be republished without an empty commit
+  # (e.g. the first run after Pages was enabled in repository settings).
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deploy at a time. Unlike deploy-prod this one may cancel: a superseded
+# documentation build has nothing to leave half-applied.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # The diagram is generated on a workstation by the archify CLI and
+      # committed (ADR-0034); CI does not regenerate it. Fail loudly if the
+      # artifact is missing rather than deploying an empty site.
+      - name: Verify the diagram artifact is present
+        run: |
+          test -s docs/diagrams/architecture.html
+          test -s docs/diagrams/architecture.json
+          echo "architecture.html $(wc -c < docs/diagrams/architecture.html) bytes"
+
+      # architecture.html is the only page worth landing on, so redirect the
+      # site root to it. Written at build time, not committed: it exists only
+      # to serve Pages and would be dead weight in the repository.
+      - name: Write index redirect
+        run: |
+          cat > docs/diagrams/index.html <<'HTML'
+          <!doctype html>
+          <meta charset="utf-8">
+          <title>frontdesk — architecture</title>
+          <meta http-equiv="refresh" content="0; url=./architecture.html">
+          <link rel="canonical" href="./architecture.html">
+          <p><a href="./architecture.html">frontdesk architecture diagram</a></p>
+          HTML
+
+      - name: Configure Pages
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: docs/diagrams
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
