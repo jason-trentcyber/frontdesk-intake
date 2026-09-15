@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Badge } from "../../../components/Badge";
 import { getDb } from "../../../lib/db";
 import { getTrackingView, statusLabel } from "../../../lib/tracking";
 
@@ -21,11 +22,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function TrackingPage({
-  params,
-}: {
-  params: Promise<{ token: string }>;
-}) {
+export default async function TrackingPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const view = await getTrackingView(getDb(), token);
 
@@ -37,8 +34,10 @@ export default async function TrackingPage({
     return (
       <main>
         <h1>Your request</h1>
-        <p>Status: approved</p>
-        <p>{view.replyText}</p>
+        <div className="card mt-4">
+          <Badge className="bg-green-100 text-green-800">Approved</Badge>
+          <p className="mt-4">{view.replyText}</p>
+        </div>
       </main>
     );
   }
@@ -46,7 +45,9 @@ export default async function TrackingPage({
   return (
     <main>
       <h1>Your request</h1>
-      <p>Status: {statusLabel(view.status)}</p>
+      <div className="card mt-4">
+        <Badge className="bg-slate-100 text-slate-800">{statusLabel(view.status)}</Badge>
+      </div>
     </main>
   );
 }

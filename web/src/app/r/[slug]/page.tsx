@@ -21,7 +21,10 @@ export default async function PublicFormPage({ params }: { params: Promise<{ slu
   // valid target here, not just the demo org - F1's public form is per
   // org, and api/'s own intake route does the identical unscoped lookup
   // by slug for the same reason.
-  const [org] = await db.select({ id: orgs.id, slug: orgs.slug, name: orgs.name }).from(orgs).where(eq(orgs.slug, slug));
+  const [org] = await db
+    .select({ id: orgs.id, slug: orgs.slug, name: orgs.name })
+    .from(orgs)
+    .where(eq(orgs.slug, slug));
   if (!org) {
     notFound();
   }
@@ -31,7 +34,10 @@ export default async function PublicFormPage({ params }: { params: Promise<{ slu
   return (
     <main>
       <h1>Contact {org.name}</h1>
-      <PublicForm slug={org.slug} orgName={org.name} turnstileSiteKey={turnstileSiteKey} />
+      <p className="mt-2 mb-6">Send a message and we&apos;ll get back to you.</p>
+      <div className="card">
+        <PublicForm slug={org.slug} orgName={org.name} turnstileSiteKey={turnstileSiteKey} />
+      </div>
     </main>
   );
 }

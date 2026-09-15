@@ -1,3 +1,4 @@
+import { StatusBadge } from "../../components/StatusBadge";
 import { getDb } from "../../lib/db";
 import { requireSessionOrRedirect } from "../../lib/auth-guard";
 import { getStaffQueue } from "../../lib/staffQueue";
@@ -20,35 +21,42 @@ export default async function StaffQueuePage() {
 
   return (
     <main>
-      <h1>Queue</h1>
-      <p>Signed in as {membership.email}</p>
-      {queue.length === 0 ? (
-        <p>No requests yet.</p>
-      ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Subject</th>
-              <th>Status</th>
-              <th>Urgency</th>
-              <th>Received</th>
-            </tr>
-          </thead>
-          <tbody>
-            {queue.map((item) => (
-              <tr key={item.id}>
-                <td>{item.subject}</td>
-                <td>{item.status}</td>
-                <td>{item.urgency ?? "—"}</td>
-                <td>{item.createdAt.toISOString()}</td>
+      <div className="flex items-baseline justify-between">
+        <h1>Queue</h1>
+        <a href="/api/auth/signout" className="text-sm text-slate-600">
+          Sign out
+        </a>
+      </div>
+      <p className="mt-1 text-sm text-slate-600">Signed in as {membership.email}</p>
+
+      <div className="card mt-6 overflow-x-auto p-0">
+        {queue.length === 0 ? (
+          <p className="p-6">No requests yet.</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Subject</th>
+                <th>Status</th>
+                <th>Urgency</th>
+                <th>Received</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-      <p>
-        <a href="/api/auth/signout">Sign out</a>
-      </p>
+            </thead>
+            <tbody>
+              {queue.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.subject}</td>
+                  <td>
+                    <StatusBadge status={item.status} />
+                  </td>
+                  <td>{item.urgency ?? "—"}</td>
+                  <td>{item.createdAt.toISOString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </main>
   );
 }
