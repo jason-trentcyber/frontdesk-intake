@@ -9,6 +9,11 @@ const nextConfig: NextConfig = {
   // only under `next dev` and never appears in a production build, so
   // this changes nothing about what ships - it keeps a framework badge
   // off the footer during a local demo. Errors still surface normally.
+  //
+  // The `false` shape is typed by the pinned version itself
+  // (next/dist/server/config-shared.d.ts: `devIndicators?: false | {...}`),
+  // so `pnpm typecheck` fails if a Next upgrade ever narrows it - no
+  // changelog reference needed to keep this honest.
   devIndicators: false,
 };
 

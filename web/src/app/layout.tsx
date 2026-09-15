@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import "./globals.css";
 
@@ -27,7 +28,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             {/* No image asset: a wordmark is one less binary in the repo
                 and one less request on the page, and it scales without a
                 second file for dark mode or high-DPI. */}
-            <a href="/" className="flex items-center gap-2 font-semibold text-slate-900 no-underline">
+            <Link
+              href="/"
+              className="flex items-center gap-2 font-semibold text-slate-900 no-underline"
+            >
               <span
                 aria-hidden="true"
                 className="bg-brand inline-flex h-6 w-6 items-center justify-center rounded text-sm leading-none font-bold text-white"
@@ -35,7 +39,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 f
               </span>
               frontdesk
-            </a>
+            </Link>
           </div>
         </header>
 
