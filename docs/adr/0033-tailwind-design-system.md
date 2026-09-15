@@ -12,7 +12,7 @@ This is a new dependency, so per `AGENTS.md` ("Do not add dependencies... withou
 
 ## Decision
 
-**Tailwind CSS v4 (`tailwindcss` 4.3.3), via the official Next.js integration** (`@tailwindcss/postcss` 4.3.3 as a PostCSS plugin, `postcss` 8.5.28) — pinned exact versions, like every other dependency in this repo.
+**Tailwind CSS v4 (`tailwindcss` 4.3.3), via the official Next.js integration** (`@tailwindcss/postcss` 4.3.3 as a PostCSS plugin, `postcss` 8.5.28) — pinned exact versions, matching this PR's other new-dependency precedent (`@playwright/test`, `lighthouse`), not every existing devDependency in `web/package.json` (several of those use caret ranges).
 
 - `web/postcss.config.mjs` registers `@tailwindcss/postcss`. Next's Turbopack build (this repo's default, both `next dev` and `next build`) has built-in PostCSS support and picks this up with no `next.config.ts` change.
 - `web/src/app/globals.css`: `@import "tailwindcss";`, one small `@theme` block, and a `@layer base` block giving `h1`/`h2`/`p`/`a`/`label`/`input`/`textarea`/`button`/`table`/`th`/`td` sensible defaults — this is the actual foundation 26b inherits. Imported once, in the root layout.
