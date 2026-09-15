@@ -23,11 +23,11 @@ export default async function StaffQueuePage() {
     <main>
       <div className="flex items-baseline justify-between">
         <h1>Queue</h1>
-        <a href="/api/auth/signout" className="text-sm text-slate-500">
+        <a href="/api/auth/signout" className="text-sm text-slate-600">
           Sign out
         </a>
       </div>
-      <p className="mt-1 text-sm text-slate-500">Signed in as {membership.email}</p>
+      <p className="mt-1 text-sm text-slate-600">Signed in as {membership.email}</p>
 
       <div className="card mt-6 overflow-x-auto p-0">
         {queue.length === 0 ? (

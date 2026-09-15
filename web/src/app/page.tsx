@@ -28,7 +28,7 @@ export default async function HomePage() {
         triages it and drafts a cited reply from the business&apos;s own documents, and staff
         approve, edit, or reject before anything goes out.
       </p>
-      <nav aria-label="Project links" className="mt-4 text-sm text-slate-500">
+      <nav aria-label="Project links" className="mt-4 text-sm text-slate-600">
         <a href="https://github.com/jason-trentcyber/frontdesk-intake">Repo</a>
         {" · "}
         <a href="https://github.com/users/jason-trentcyber/projects/1">Board</a>
@@ -71,7 +71,7 @@ export default async function HomePage() {
                   {item.kind === "approved" ? (
                     <p className="mt-1 text-sm">{item.replyText}</p>
                   ) : (
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="mt-1 text-sm text-slate-600">
                       Status: {statusLabel(item.status)}
                     </p>
                   )}
