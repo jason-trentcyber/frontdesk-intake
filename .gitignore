@@ -54,3 +54,10 @@ infra/hetzner/kubeconfig
 
 # Grafana admin password (ADR-0026); the stack is brought up by hand on the VPS.
 deploy/observability/.env
+
+# archify visual-check evidence (ADR-0034): four PNG captures, a contact sheet
+# and a JSON receipt, regenerated on every run. The artifact they attest to is
+# committed; the ~700 KB of evidence is not.
+docs/diagrams/*.visual-check.*
+# Written by the pages workflow at build time, never committed.
+docs/diagrams/index.html
