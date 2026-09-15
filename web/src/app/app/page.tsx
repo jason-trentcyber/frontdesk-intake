@@ -1,13 +1,19 @@
+import { requestStatus } from "@frontdesk/db";
 import { getDb } from "../../lib/db";
 import { requireSessionOrRedirect } from "../../lib/auth-guard";
 import { getStaffQueue } from "../../lib/staffQueue";
+
+type RequestStatus = (typeof requestStatus.enumValues)[number];
 
 // F10's full lane/urgency/age/status filters and F11/F12's request detail
 // and actions are 26b's scope - this page stays a minimal, styled read
 // only, per ADR-0031/26a. Status badge colors are a small closed set
 // mirroring db/src/schema/enums.ts's requestStatus values; not extracted
-// to a shared module yet since this is the only consumer until 26b.
-const STATUS_STYLES: Record<string, string> = {
+// to a shared module yet since this is the only consumer until 26b. Keyed
+// by RequestStatus, not a bare string, so adding/renaming/removing a
+// status in the enum is a compile error here, not a silent fallback to
+// the default badge style at runtime.
+const STATUS_STYLES: Record<RequestStatus, string> = {
   received: "bg-slate-100 text-slate-800",
   triaging: "bg-blue-100 text-blue-800",
   drafted: "bg-blue-100 text-blue-800",
@@ -17,7 +23,7 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 function StatusBadge({ status }: { status: string }) {
-  const style = STATUS_STYLES[status] ?? "bg-slate-100 text-slate-800";
+  const style = STATUS_STYLES[status as RequestStatus] ?? "bg-slate-100 text-slate-800";
   return (
     <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${style}`}>
       {status}

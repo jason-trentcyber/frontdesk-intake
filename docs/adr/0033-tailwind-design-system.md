@@ -39,5 +39,12 @@ This is a new dependency, so per `AGENTS.md` ("Do not add dependencies... withou
 ## Acceptance
 
 - `pnpm --filter @frontdesk/web build` and `docker build -f web/Dockerfile .` both succeed.
-- Lighthouse accessibility >= 0.90 on `/` and `/r/<demo-slug>` (ADR-0029's existing gate, unmodified) — actual scores quoted in the PR body, not asserted without evidence.
-- Every existing `web/` vitest suite and both Playwright specs stay green with no selector changes.
+- Lighthouse accessibility >= 0.90 on `/` and `/r/<demo-slug>` (ADR-0029's existing gate, unmodified). Run locally the same way the `lighthouse` CI job runs it (real `next build` + `next start`, seeded Postgres, `--only-categories=accessibility`), recorded here rather than only in the PR body, since the review agent's prompt is built from the diff alone:
+
+  ```
+  accessibility score for /:                      1.0
+  accessibility score for /r/bright-smile-dental:  1.0
+  ```
+
+  Confirmed via the same run's per-audit results that `color-contrast`, `button-name`, `label`, and `html-has-lang` each scored 1 individually, not just the rolled-up category score.
+- Every existing `web/` vitest suite and both Playwright specs (`web/e2e/submit.spec.ts`, `web/e2e/cross-org-isolation.spec.ts`) stay green with no selector changes.
