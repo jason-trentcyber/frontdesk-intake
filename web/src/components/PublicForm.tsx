@@ -46,9 +46,15 @@ export function PublicForm({ slug, orgName, turnstileSiteKey }: PublicFormProps)
           input into the enclosing <form> itself once it completes - no
           callback wiring needed, and it's the same field name api/'s
           bodySchema already expects. className="cf-turnstile" is how
-          Cloudflare's script finds it - do not rename or wrap it. */}
+          Cloudflare's script finds it - do not rename or wrap it.
+          data-appearance="interaction-only" hides the widget unless the
+          visitor actually has to click something; the default renders a
+          Cloudflare-branded "Success!" panel mid-form for everyone. The
+          token is still injected and api/ still verifies it, so this is
+          purely cosmetic - not "invisible" mode, which is a widget-level
+          setting requiring a Privacy Addendum reference we don't have. */}
       <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
-      <div className="cf-turnstile" data-sitekey={turnstileSiteKey} />
+      <div className="cf-turnstile" data-sitekey={turnstileSiteKey} data-appearance="interaction-only" />
       {state.status === "error" && (
         <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
           {state.message}

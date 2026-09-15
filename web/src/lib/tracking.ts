@@ -62,3 +62,22 @@ export function statusLabel(status: NonApprovedStatus): string {
       return "Reviewed";
   }
 }
+
+// The same states as statusLabel(), in a sentence aimed at the person who
+// submitted the request rather than at staff. The badge alone answers none
+// of the three things a visitor wants to know - did it arrive, what is
+// happening now, is there anything for me to do. Deliberately vague about
+// timing: nothing here guarantees a response window, so "within 24 hours"
+// would be a claim the product cannot keep.
+export function statusDescription(status: NonApprovedStatus): string {
+  switch (status) {
+    case "received":
+      return "We have your message. Nobody has picked it up yet - check back here for updates.";
+    case "triaging":
+    case "drafted":
+    case "needs_human":
+      return "Someone is working on your request now. Their reply will appear on this page once it has been approved.";
+    case "rejected":
+      return "We have reviewed your request and will not be replying here. If you still need help, send a new message or get in touch directly.";
+  }
+}
