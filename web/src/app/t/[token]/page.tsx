@@ -33,7 +33,7 @@ export default async function TrackingPage({ params }: { params: Promise<{ token
     return (
       <main>
         <h1>Your request</h1>
-        <div className="mt-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="card mt-4">
           <span className="inline-flex rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
             Approved
           </span>

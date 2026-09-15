@@ -35,7 +35,7 @@ export default async function PublicFormPage({ params }: { params: Promise<{ slu
     <main>
       <h1>Contact {org.name}</h1>
       <p className="mt-2 mb-6">Send a message and we&apos;ll get back to you.</p>
-      <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="card">
         <PublicForm slug={org.slug} orgName={org.name} turnstileSiteKey={turnstileSiteKey} />
       </div>
     </main>

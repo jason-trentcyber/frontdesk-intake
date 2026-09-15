@@ -57,7 +57,7 @@ export default async function StaffQueuePage() {
       </div>
       <p className="mt-1 text-sm text-slate-500">Signed in as {membership.email}</p>
 
-      <div className="mt-6 overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+      <div className="card mt-6 overflow-x-auto p-0">
         {queue.length === 0 ? (
           <p className="p-6">No requests yet.</p>
         ) : (

@@ -42,7 +42,7 @@ export default async function HomePage() {
         <section aria-labelledby="demo-form-heading">
           <h2 id="demo-form-heading">Try it - {demoOrg?.name ?? "the demo"}</h2>
           {demoOrg ? (
-            <div className="mt-3 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="card mt-3">
               <PublicForm
                 slug={demoOrg.slug}
                 orgName={demoOrg.name}
@@ -66,10 +66,7 @@ export default async function HomePage() {
           ) : (
             <ul className="mt-3 space-y-3">
               {queue.map((item) => (
-                <li
-                  key={item.id}
-                  className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
-                >
+                <li key={item.id} className="card p-4">
                   <p className="font-medium text-slate-900">{item.subject}</p>
                   {item.kind === "approved" ? (
                     <p className="mt-1 text-sm">{item.replyText}</p>

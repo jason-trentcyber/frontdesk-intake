@@ -39,7 +39,7 @@ This is a new dependency, so per `AGENTS.md` ("Do not add dependencies... withou
 ## Acceptance
 
 - `pnpm --filter @frontdesk/web build` and `docker build -f web/Dockerfile .` both succeed.
-- Lighthouse accessibility >= 0.90 on `/` and `/r/<demo-slug>` (ADR-0029's existing gate, unmodified). Run locally the same way the `lighthouse` CI job runs it (real `next build` + `next start`, seeded Postgres, `--only-categories=accessibility`), recorded here rather than only in the PR body, since the review agent's prompt is built from the diff alone:
+- Lighthouse accessibility >= 0.90 on `/` and `/r/<demo-slug>` (ADR-0029's existing gate, unmodified). Run locally the same way the `lighthouse` CI job runs it (real `next build` + `next start`, seeded Postgres, `--only-categories=accessibility`), recorded here so it's visible to anyone reading the committed diff, not only the PR description:
 
   ```
   accessibility score for /:                      1.0
