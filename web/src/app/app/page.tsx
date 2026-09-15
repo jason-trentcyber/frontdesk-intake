@@ -1,32 +1,7 @@
-import { requestStatus } from "@frontdesk/db";
-import { Badge } from "../../components/Badge";
+import { StatusBadge } from "../../components/StatusBadge";
 import { getDb } from "../../lib/db";
 import { requireSessionOrRedirect } from "../../lib/auth-guard";
 import { getStaffQueue } from "../../lib/staffQueue";
-
-type RequestStatus = (typeof requestStatus.enumValues)[number];
-
-// F10's full lane/urgency/age/status filters and F11/F12's request detail
-// and actions are 26b's scope - this page stays a minimal, styled read
-// only, per ADR-0031/26a. Status badge colors are a small closed set
-// mirroring db/src/schema/enums.ts's requestStatus values; not extracted
-// to a shared module yet since this is the only consumer until 26b. Keyed
-// by RequestStatus, not a bare string, so adding/renaming/removing a
-// status in the enum is a compile error here, not a silent fallback to
-// the default badge style at runtime.
-const STATUS_STYLES: Record<RequestStatus, string> = {
-  received: "bg-slate-100 text-slate-800",
-  triaging: "bg-blue-100 text-blue-800",
-  drafted: "bg-blue-100 text-blue-800",
-  needs_human: "bg-amber-100 text-amber-800",
-  approved: "bg-green-100 text-green-800",
-  rejected: "bg-red-100 text-red-800",
-};
-
-function StatusBadge({ status }: { status: string }) {
-  const style = STATUS_STYLES[status as RequestStatus] ?? "bg-slate-100 text-slate-800";
-  return <Badge className={style}>{status}</Badge>;
-}
 
 export default async function StaffQueuePage() {
   // Real membership check, called again (React's cache() dedupes this
