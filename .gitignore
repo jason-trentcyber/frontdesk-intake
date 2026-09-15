@@ -61,3 +61,9 @@ deploy/observability/.env
 docs/diagrams/*.visual-check.*
 # Written by the pages workflow at build time, never committed.
 docs/diagrams/index.html
+
+# Written by `next dev` (next@16 generate-agent-files.js), not by us. A
+# web/AGENTS.md would shadow the repo-root AGENTS.md for agents working in
+# web/, and it regenerates on every dev run.
+web/AGENTS.md
+web/CLAUDE.md
