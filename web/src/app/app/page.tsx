@@ -1,4 +1,5 @@
 import { requestStatus } from "@frontdesk/db";
+import { Badge } from "../../components/Badge";
 import { getDb } from "../../lib/db";
 import { requireSessionOrRedirect } from "../../lib/auth-guard";
 import { getStaffQueue } from "../../lib/staffQueue";
@@ -24,11 +25,7 @@ const STATUS_STYLES: Record<RequestStatus, string> = {
 
 function StatusBadge({ status }: { status: string }) {
   const style = STATUS_STYLES[status as RequestStatus] ?? "bg-slate-100 text-slate-800";
-  return (
-    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${style}`}>
-      {status}
-    </span>
-  );
+  return <Badge className={style}>{status}</Badge>;
 }
 
 export default async function StaffQueuePage() {

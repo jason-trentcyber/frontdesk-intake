@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Badge } from "../../../components/Badge";
 import { getDb } from "../../../lib/db";
 import { getTrackingView, statusLabel } from "../../../lib/tracking";
 
@@ -34,9 +35,7 @@ export default async function TrackingPage({ params }: { params: Promise<{ token
       <main>
         <h1>Your request</h1>
         <div className="card mt-4">
-          <span className="inline-flex rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
-            Approved
-          </span>
+          <Badge className="bg-green-100 text-green-800">Approved</Badge>
           <p className="mt-4">{view.replyText}</p>
         </div>
       </main>
@@ -47,9 +46,7 @@ export default async function TrackingPage({ params }: { params: Promise<{ token
     <main>
       <h1>Your request</h1>
       <div className="card mt-4">
-        <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-800">
-          {statusLabel(view.status)}
-        </span>
+        <Badge className="bg-slate-100 text-slate-800">{statusLabel(view.status)}</Badge>
       </div>
     </main>
   );
