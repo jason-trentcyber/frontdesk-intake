@@ -21,8 +21,11 @@ const input = path.resolve(inputArg);
 const output = path.resolve(outputArg);
 
 const browser = await chromium.launch({
-  executablePath: '/home/jason/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome',
-  args: ['--no-sandbox'],
+  // ARCHIFY_CHROME is the same variable the archify CLI reads, so one export
+  // covers both steps of the regeneration flow. Unset falls through to
+  // Playwright's own browser resolution.
+  executablePath: process.env.ARCHIFY_CHROME || undefined,
+  args: process.env.ARCHIFY_CHROME_NO_SANDBOX === '1' ? ['--no-sandbox'] : [],
 });
 const page = await browser.newPage({
   viewport: { width: 2048, height: 1320 },
