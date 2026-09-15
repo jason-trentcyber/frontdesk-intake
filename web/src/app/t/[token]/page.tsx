@@ -21,11 +21,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function TrackingPage({
-  params,
-}: {
-  params: Promise<{ token: string }>;
-}) {
+export default async function TrackingPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const view = await getTrackingView(getDb(), token);
 
@@ -37,8 +33,12 @@ export default async function TrackingPage({
     return (
       <main>
         <h1>Your request</h1>
-        <p>Status: approved</p>
-        <p>{view.replyText}</p>
+        <div className="mt-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+          <span className="inline-flex rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+            Approved
+          </span>
+          <p className="mt-4">{view.replyText}</p>
+        </div>
       </main>
     );
   }
@@ -46,7 +46,11 @@ export default async function TrackingPage({
   return (
     <main>
       <h1>Your request</h1>
-      <p>Status: {statusLabel(view.status)}</p>
+      <div className="mt-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+        <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-800">
+          {statusLabel(view.status)}
+        </span>
+      </div>
     </main>
   );
 }

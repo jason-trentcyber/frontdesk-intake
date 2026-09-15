@@ -23,44 +23,61 @@ export default async function HomePage() {
   return (
     <main>
       <h1>frontdesk</h1>
-      <p>
+      <p className="mt-2 max-w-2xl">
         An AI-assisted request desk for small businesses: a visitor submits a request, an LLM
         triages it and drafts a cited reply from the business&apos;s own documents, and staff
         approve, edit, or reject before anything goes out.
       </p>
-      <nav aria-label="Project links">
+      <nav aria-label="Project links" className="mt-4 text-sm text-slate-500">
         <a href="https://github.com/jason-trentcyber/frontdesk-intake">Repo</a>
         {" · "}
         <a href="https://github.com/users/jason-trentcyber/projects/1">Board</a>
         {" · "}
-        <a href="https://github.com/jason-trentcyber/frontdesk-intake/blob/main/REQUIREMENTS.md">Docs</a>
+        <a href="https://github.com/jason-trentcyber/frontdesk-intake/blob/main/REQUIREMENTS.md">
+          Docs
+        </a>
       </nav>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "2rem", marginTop: "2rem" }}>
-        <section aria-labelledby="demo-form-heading" style={{ flex: "1 1 20rem" }}>
+      <div className="mt-10 grid grid-cols-1 gap-8 md:grid-cols-2">
+        <section aria-labelledby="demo-form-heading">
           <h2 id="demo-form-heading">Try it - {demoOrg?.name ?? "the demo"}</h2>
           {demoOrg ? (
-            <PublicForm slug={demoOrg.slug} orgName={demoOrg.name} turnstileSiteKey={turnstileSiteKey} />
+            <div className="mt-3 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+              <PublicForm
+                slug={demoOrg.slug}
+                orgName={demoOrg.name}
+                turnstileSiteKey={turnstileSiteKey}
+              />
+            </div>
           ) : (
-            <p>The demo isn&apos;t configured right now.</p>
+            <p className="mt-3">The demo isn&apos;t configured right now.</p>
           )}
         </section>
 
-        <section aria-labelledby="demo-queue-heading" style={{ flex: "1 1 20rem" }}>
+        <section aria-labelledby="demo-queue-heading">
           <h2 id="demo-queue-heading">Live queue</h2>
           {queue.length === 0 ? (
             // Not an edge case: F17 purges demo submissions after 24h,
             // so this is the state every morning until someone submits.
-            <p>
-              No requests in the last 24 hours - they&apos;re purged on a schedule (F17). Submit
-              the form to see one appear here.
+            <p className="mt-3">
+              No requests in the last 24 hours - they&apos;re purged on a schedule (F17). Submit the
+              form to see one appear here.
             </p>
           ) : (
-            <ul>
+            <ul className="mt-3 space-y-3">
               {queue.map((item) => (
-                <li key={item.id}>
-                  <p>{item.subject}</p>
-                  {item.kind === "approved" ? <p>{item.replyText}</p> : <p>Status: {statusLabel(item.status)}</p>}
+                <li
+                  key={item.id}
+                  className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+                >
+                  <p className="font-medium text-slate-900">{item.subject}</p>
+                  {item.kind === "approved" ? (
+                    <p className="mt-1 text-sm">{item.replyText}</p>
+                  ) : (
+                    <p className="mt-1 text-sm text-slate-500">
+                      Status: {statusLabel(item.status)}
+                    </p>
+                  )}
                 </li>
               ))}
             </ul>

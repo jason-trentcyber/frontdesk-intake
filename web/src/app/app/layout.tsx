@@ -30,7 +30,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     return (
       <main>
         <h1>Not a member</h1>
-        <p>Your account isn&apos;t a member of any organization here. Ask your organization&apos;s owner to add you.</p>
+        <div className="mt-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+          <p>
+            Your account isn&apos;t a member of any organization here. Ask your organization&apos;s
+            owner to add you.
+          </p>
+        </div>
       </main>
     );
   }
