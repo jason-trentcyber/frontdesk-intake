@@ -4,9 +4,20 @@ An AI-assisted request desk for small businesses, built in public as an **AI-fir
 
 Customers submit requests through a public form. The system classifies each request, routes it to a lane, retrieves the business's own documents, and drafts a cited reply. Staff approve, edit, or reject. The engineering *process* (agents and humans on one repo, with guardrails from ideation to operations) is as much the deliverable as the product.
 
-**Status:** Milestone 1 (skeleton and SDLC scaffolding). Nothing deployed yet.
+**Status:** deployed and serving on a single k3s node. Public intake, tracking, and staff sign-in work end to end. The staff queue is read-only for now — request detail, citations, and approve/edit/reject are [#26](https://github.com/jason-trentcyber/frontdesk-intake/issues/26). Two of the six SDLC guardrails below are specified but not built yet; each says so.
 
-Live site: `https://frontdesk.jtrent.dev` (not yet) · Board: [github.com/users/jason-trentcyber/projects/1](https://github.com/users/jason-trentcyber/projects/1) · Docs: [`REQUIREMENTS.md`](REQUIREMENTS.md), [`docs/adr/`](docs/adr/README.md), [`docs/AI-GOVERNANCE.md`](docs/AI-GOVERNANCE.md)
+**Live:** [frontdesk.jtrent.dev](https://frontdesk.jtrent.dev) · Board: [projects/1](https://github.com/users/jason-trentcyber/projects/1) · Docs: [`REQUIREMENTS.md`](REQUIREMENTS.md), [`docs/adr/`](docs/adr/README.md), [`docs/AI-GOVERNANCE.md`](docs/AI-GOVERNANCE.md)
+
+### Try it
+
+| Surface | What it is |
+|---|---|
+| [`/`](https://frontdesk.jtrent.dev) | Landing page |
+| [`/r/bright-smile-dental`](https://frontdesk.jtrent.dev/r/bright-smile-dental) | Public request form for the demo org — submit one and you get a tracking link |
+| `/t/<token>` | Tracking page for a submitted request; unguessable token, no login |
+| [`/app`](https://frontdesk.jtrent.dev/app) | Staff queue — redirects to sign-in; membership is re-resolved per request, never cached in the session |
+
+Demo submissions are purged after 24 hours. The demo org's retrieval index is inspectable without auth: [`/api/v1/orgs/bright-smile-dental/index-info`](https://frontdesk.jtrent.dev/api/v1/orgs/bright-smile-dental/index-info) returns the embedding model, chunking strategy, HNSW parameters, and live document/chunk counts. Non-demo orgs 404 there by design — it never confirms a private org's slug is real.
 
 ## Architecture
 
@@ -26,13 +37,13 @@ Six guardrails, all visible in this repo:
 1. **Context pack** — `CLAUDE.md`, `AGENTS.md`, `docs/conventions.md`, ADRs. Agents read before they write.
 2. **Provenance** — every PR has one `agent:*` label and a `Model:` line; co-author trailers are kept. Enforced by `pr-lint`.
 3. **Blocking review agent** — Claude Code headless reviews every PR against `docs/review-rubric.md`; `blocking` findings fail the check. A human still approves.
-4. **Eval gate** — prompt and retrieval changes must not regress `evals/baseline.json`.
+4. **Eval gate** — *specified, not built ([#30](https://github.com/jason-trentcyber/frontdesk-intake/issues/30)).* The design: prompt and retrieval changes must not regress `evals/baseline.json`, and the baseline is only raised by a human commit. `evals/golden/` is empty today and no eval job runs in CI.
 5. **Governance** — `docs/AI-GOVERNANCE.md`: who may do what, what always needs a human.
-6. **Ops loop** — a scheduled agent with read-only cluster access files issues with evidence. It never applies changes.
+6. **Ops loop** — *specified, not built ([#32](https://github.com/jason-trentcyber/frontdesk-intake/issues/32)).* The design: a scheduled agent with read-only cluster access files issues with evidence and never applies changes. It depends on off-node Prometheus/Loki ([#52](https://github.com/jason-trentcyber/frontdesk-intake/issues/52)), which is also not built.
 
 ## Cost
 
-_Table pending (M4, #43): OpenRouter vs Bedrock vs Hetzner GPU vs Ollama at the sized workload, with break-even._
+_Table pending ([#33](https://github.com/jason-trentcyber/frontdesk-intake/issues/33)): OpenRouter vs Bedrock vs Hetzner GPU vs Ollama at the sized workload, with break-even._
 
 ## Switch to Bedrock
 
