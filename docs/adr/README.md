@@ -39,3 +39,4 @@ Format: context, decision, consequences, alternatives rejected. One file per dec
 | 0033 | Tailwind CSS v4 (official Next.js PostCSS integration) is `web/`'s styling stack; no component library; colors/spacing are Tailwind's own scale, not a bespoke token system | decided; root-layout clause amended by 0035 |
 | 0034 | The architecture diagram is committed under `docs/diagrams/` and published to GitHub Pages; the README embeds a PNG pair, not SVG; the app does not serve it | decided, applied |
 | 0035 | Page chrome (header/footer) in `web/`'s root layout: wordmark header, footer stating the human-approval step, flex column pinning the footer on short pages; amends 0033 | decided |
+| 0036 | MCP: a thin `mcp/` server that calls `api/` over the F3 API key (never `@frontdesk/db`), three tools, stdio, spec 2026-07-28; Agent Skills are the procedure layer, not a replacement; remote HTTP + OAuth and `search_documents` deferred | decided, not yet implemented |
