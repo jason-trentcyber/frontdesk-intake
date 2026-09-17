@@ -41,9 +41,12 @@ export default async function StaffQueuePage({
 
   const db = getDb();
   const filterOptions = await getStaffQueueFilterOptions(db, membership.orgId);
-  const statusFilter = requestedStatus.filter((s): s is RequestStatus =>
-    (filterOptions.statuses as string[]).includes(s),
-  );
+  // A Set<string>, not `(filterOptions.statuses as string[]).includes(s)`:
+  // RequestStatus[] is trivially assignable to Iterable<string>, so this
+  // narrows requestedStatus (plain strings from the query string) down to
+  // RequestStatus without a type assertion at the comparison site.
+  const validStatuses = new Set<string>(filterOptions.statuses);
+  const statusFilter = requestedStatus.filter((s): s is RequestStatus => validStatuses.has(s));
   const laneFilter = requestedLane.filter((l) => filterOptions.lanes.includes(l));
 
   const queue = await getStaffQueue(db, membership.orgId, {
