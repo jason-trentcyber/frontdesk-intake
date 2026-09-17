@@ -27,6 +27,15 @@ const ACTION_KIND_LABEL: Record<string, string> = {
 
 const RESOLVED_STATUSES = new Set(["approved", "rejected"]);
 
+// requests.id is a Postgres uuid column - a malformed [id] segment (a
+// typo'd link, a crawler probing paths) would otherwise reach
+// getRequestDetail()/forOrg() and surface as a raw "invalid input syntax
+// for uuid" error from the database instead of a clean, expected 404.
+// Not a security boundary (the query is parameterized via Drizzle either
+// way, so this is not an injection concern) - purely a cleaner failure
+// mode for an input that was never going to match a row.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export default async function RequestDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const membership = await requireSessionOrRedirect();
   if (!membership) {
@@ -34,6 +43,10 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
   }
 
   const { id } = await params;
+  if (!UUID_RE.test(id)) {
+    notFound();
+  }
+
   const view = await getRequestDetail(getDb(), membership.orgId, id);
   if (view.kind === "not_found") {
     notFound();

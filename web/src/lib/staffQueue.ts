@@ -88,6 +88,11 @@ export async function getStaffQueueFilterOptions(
   const settings = orgSettingsSchema.parse(row?.settings ?? {});
   const lanes = Array.from(new Set(Object.values(settings.lanes))).sort();
   return {
+    // Unlike lanes/categories, statuses is the full fixed enum, not
+    // derived from what's currently in the queue: a status filter
+    // checkbox that only appears once a row with that status exists
+    // would be confusing (staff couldn't pre-filter to "show me
+    // approved" on a queue that happens to have zero right now).
     statuses: requestStatus.enumValues,
     lanes,
     categories: settings.categories,
