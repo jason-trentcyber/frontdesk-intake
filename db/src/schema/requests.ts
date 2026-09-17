@@ -48,6 +48,16 @@ export const requests = pgTable(
     // dropped both the filtered and unfiltered query to ~0.25ms via an
     // index scan that stops at the LIMIT. See the 26b PR body for the
     // full EXPLAIN ANALYZE output both ways.
+    //
+    // Plain CREATE INDEX, not CONCURRENTLY: this table has a handful of
+    // rows in production today, so the brief ACCESS EXCLUSIVE lock a
+    // plain build takes is real but immaterial, and the
+    // frontdesk-db-migrate hook Job (ADR-0018/0019) already runs every
+    // migration inside Drizzle's own transaction, which CONCURRENTLY
+    // cannot run inside. Revisit if this table ever needs an index added
+    // once it holds enough rows for that lock to be felt - by then the
+    // migrate Job's transactional-migration assumption needs revisiting
+    // too, not just this one statement.
     index("requests_org_id_created_at_idx").on(t.orgId, t.createdAt.desc()),
     pgPolicy("org_isolation", {
       for: "all",
