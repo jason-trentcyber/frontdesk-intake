@@ -179,9 +179,13 @@ export async function editApproveRequestAction(
       version: nextVersion,
       body,
       citations: [],
-      // "0", not a real model score - this draft has no LLM confidence
-      // to report (model: "staff" is the actual signal a reader should
-      // key off, same as db/src/seed.ts's seed-authored drafts).
+      // "0" is a sentinel, not a real model score - drafts.confidence is
+      // NOT NULL (numeric(4,3), no default), so null isn't an option
+      // here without a schema migration this PR doesn't make. model:
+      // "staff" is the actual field a reader should key off to tell a
+      // staff-authored draft apart from a genuinely low-confidence LLM
+      // one (same convention db/src/seed.ts already uses for its own
+      // seed-authored drafts) - never read confidence alone.
       confidence: "0",
       model: "staff",
       promptVersion: "n/a",
