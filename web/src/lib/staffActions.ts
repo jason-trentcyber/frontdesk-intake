@@ -100,6 +100,29 @@ function revalidateQueueAndDetail(requestId: string): void {
   revalidatePath(`/app/${requestId}`);
 }
 
+// approve/edit/reject are all terminal: each sets resolved_at and a
+// terminal status, and /app/[id] hides the action forms once the request
+// is in one (RESOLVED_STATUSES there). That UI check is not the control -
+// a Server Action is a POST endpoint reachable by a crafted request that
+// never rendered the page, which is the same reasoning ADR-0031 §5
+// applies to the membership check one line into each action below.
+//
+// Without this, re-approving an already-rejected request overwrites
+// reply_text and publishes a reply on the public /t/<token> page for a
+// request staff had declined. The audit trail stays honest either way
+// (the second action writes a truthful rejected -> approved row), so
+// this is about the request's own state, not about the log.
+//
+// Checked in the same forOrg() transaction that does the write, against
+// the row just read - not against anything the client sent.
+const RESOLVED_STATUSES = new Set(["approved", "rejected"]);
+
+function assertNotResolved(status: string): void {
+  if (RESOLVED_STATUSES.has(status)) {
+    throw new Error(`This request has already been ${status} and cannot be actioned again.`);
+  }
+}
+
 /**
  * F12 approve: the latest draft's body becomes the reply, verbatim.
  * requireMembershipForAction() is this function's own first statement
@@ -114,6 +137,7 @@ export async function approveRequestAction(requestId: string): Promise<void> {
   await forOrg(db, membership.orgId, async (tx, orgId) => {
     const state = await loadCurrentState(tx, orgId, requestId);
     if (!state) throw new Error("Request not found.");
+    assertNotResolved(state.status);
 
     const [latestDraft] = await tx
       .select({ version: drafts.version, body: drafts.body })
@@ -171,6 +195,7 @@ export async function editApproveRequestAction(
   await forOrg(db, membership.orgId, async (tx, orgId) => {
     const state = await loadCurrentState(tx, orgId, requestId);
     if (!state) throw new Error("Request not found.");
+    assertNotResolved(state.status);
 
     const nextVersion = (state.latestDraftVersion ?? 0) + 1;
     await tx.insert(drafts).values({
@@ -226,6 +251,7 @@ export async function rejectRequestAction(requestId: string, formData: FormData)
   await forOrg(db, membership.orgId, async (tx, orgId) => {
     const state = await loadCurrentState(tx, orgId, requestId);
     if (!state) throw new Error("Request not found.");
+    assertNotResolved(state.status);
 
     const before: ActionSnapshot = {
       status: state.status,
