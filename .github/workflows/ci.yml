@@ -633,7 +633,7 @@ jobs:
       # don't re-fetch the ~130 MB model.onnx.
       - name: Cache embedding model
         id: model-cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: worker/models
           key: bge-small-en-v1.5-5c38ec7c405ec4b44b94cc5a9bb96e735b38267a
