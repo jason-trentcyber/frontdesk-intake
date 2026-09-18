@@ -180,7 +180,10 @@ async function upsertOrg(db: Db, org: OrgSeed): Promise<{ id: string; inserted: 
   if (inserted[0]) {
     return { id: inserted[0].id, inserted: true };
   }
-  const [existing] = await db.select({ id: schema.orgs.id }).from(schema.orgs).where(eq(schema.orgs.slug, org.slug));
+  const [existing] = await db
+    .select({ id: schema.orgs.id })
+    .from(schema.orgs)
+    .where(eq(schema.orgs.slug, org.slug));
   if (!existing) {
     throw new Error(`org ${org.slug} missing immediately after a no-op insert`);
   }
@@ -277,13 +280,16 @@ async function upsertDemoRequests(db: Db, orgId: string, org: OrgSeed): Promise<
     });
 
     if (seed.approved) {
+      // Same {status, replyText, draftVersion} shape every real approve/
+      // edit/reject action writes (web/src/lib/staffActions.ts, 26b) -
+      // seed data is still data other code reads.
       await db.insert(schema.actions).values({
         orgId,
         requestId: request.id,
         actorEmail: ownerEmailFor(org.slug),
         kind: "approve",
-        before: { status: "drafted" },
-        after: { status: "approved" },
+        before: { status: "drafted", replyText: null, draftVersion: 1 },
+        after: { status: "approved", replyText: seed.draftBody, draftVersion: 1 },
         reason: null,
       });
     }
