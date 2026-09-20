@@ -18,6 +18,7 @@ consumer.py already applies to an unvalidated queue message body).
 
 import json
 import logging
+import re
 from dataclasses import dataclass
 
 from llm import LLMProvider, Message
@@ -31,6 +32,12 @@ DEFAULT_URGENCY = "normal"
 DEFAULT_UNASSIGNED_LANE = "unassigned"
 _VALID_URGENCIES = frozenset({"low", "normal", "high"})
 _MAX_TOKENS = 200
+# A Markdown code fence around the JSON object, with or without a language
+# tag. The prompt says "no markdown code fences"; the configured model wraps
+# every response in one anyway (#133, found by the eval gate's first
+# --record run - all 20 of evals/fixtures/completions.json are fenced).
+# Stripped before parsing; nothing else about the parse is loosened.
+_FENCE_RE = re.compile(r"\A\s*```[a-zA-Z0-9_-]*\s*\n?(.*?)\n?\s*```\s*\Z", re.DOTALL)
 
 
 @dataclass(frozen=True)
@@ -77,9 +84,14 @@ async def classify_and_route(
     )
 
 
+def _strip_fence(text: str) -> str:
+    match = _FENCE_RE.match(text)
+    return match.group(1) if match else text
+
+
 def _parse(text: str, categories: list[str]) -> tuple[str, str, str]:
     try:
-        data = json.loads(text)
+        data = json.loads(_strip_fence(text))
         category = data["category"]
         urgency = data["urgency"]
         summary = data["summary"]
