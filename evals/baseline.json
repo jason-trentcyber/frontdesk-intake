@@ -1,5 +1,5 @@
 {
-  "classification_accuracy": 0.2,
+  "classification_accuracy": 1.0,
   "recall_at_5": 1.0,
   "recall_at_1": 0.8889
 }
