@@ -698,9 +698,9 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgresql://frontdesk:***@localhost:5432/frontdesk
-      DATABASE_APP_URL: postgresql://frontdesk_app:***@localhost:5432/frontdesk
-      MIGRATE_DATABASE_URL: postgresql://frontdesk:***@localhost:5432/frontdesk
+      DATABASE_URL: postgresql://frontdesk:frontdesk@localhost:5432/frontdesk
+      DATABASE_APP_URL: postgresql://frontdesk_app:frontdesk_app@localhost:5432/frontdesk
+      MIGRATE_DATABASE_URL: postgresql://frontdesk:frontdesk@localhost:5432/frontdesk
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -751,8 +751,8 @@ jobs:
 
       - name: Assert no LLM credentials in this job
         run: |
-          if [ -n "${LLM_PROVIDER:-}" ] || [ -n "${OPENROUTER_API_KEY:-}" ] || [ -n "${AWS_ACCESS_KEY_ID:-}" ]; then
-            echo "::error::the eval job must run with no LLM provider or credential set" >&2
+          if [ -n "${LLM_PROVIDER:-}" ] || [ -n "${LLM_MODEL:-}" ] || [ -n "${OPENROUTER_API_KEY:-}" ] || env | grep -q '^AWS_'; then
+            echo "::error::the eval job must run with no LLM provider, model, or credential set" >&2
             exit 1
           fi
 

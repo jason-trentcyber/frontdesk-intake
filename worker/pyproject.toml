@@ -46,9 +46,13 @@ line-length = 100
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+# The repo root, so tests/test_evals_harness.py can import evals/ (ADR-0036)
+# the same way `make eval` runs it (PYTHONPATH=..).
+pythonpath = [".", ".."]
 
 [tool.pyright]
 typeCheckingMode = "basic"
+extraPaths = [".."]
 
 # No src/ layout: frontdesk_worker/ is the consumer-loop package (db access,
 # queue adapters, the contract validator, spend controls, the #25 pipeline
