@@ -80,6 +80,9 @@ REPORTED_METRICS = ("urgency_accuracy",)
 
 _HEADING_RE = re.compile(r"^(#{1,6})\s+(.+)$")
 _ANCHOR_RE = re.compile(r"^([a-z0-9-]+\.md)#(.+)$")
+_GOLDEN_KEYS = frozenset(
+    {"id", "subject", "body", "expected_category", "expected_urgency", "expected_chunk"}
+)
 
 
 class HarnessError(Exception):
@@ -147,6 +150,15 @@ def load_golden(golden_dir: Path) -> list[Example]:
                 raw = json.loads(line)
             except json.JSONDecodeError as exc:
                 raise HarnessError(f"{where}: invalid JSON ({exc})") from exc
+            unknown = set(raw) - _GOLDEN_KEYS
+            if unknown:
+                # A candidate line from `pnpm eval:export` still carries its
+                # `provenance` block (and the model's unverified labels). It
+                # must be curated, not pasted - fail loudly rather than score it.
+                raise HarnessError(
+                    f"{where}: unexpected keys {sorted(unknown)} - if this came from "
+                    "evals/candidates/, curate the labels and drop `provenance` first"
+                )
             for key in ("id", "subject", "body", "expected_category", "expected_urgency"):
                 if not isinstance(raw.get(key), str) or not raw[key].strip():
                     raise HarnessError(f"{where}: {key!r} missing or empty")
