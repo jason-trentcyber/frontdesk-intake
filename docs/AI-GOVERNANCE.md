@@ -26,6 +26,17 @@ This repo is built with AI coding agents alongside a human. These are the rules.
 - Cheap-model output (anything below Sonnet-class) never merges without the review agent passing AND a Claude-class or human review pass. Label such PRs `model:budget`.
 - **Dependabot is the one exemption (ADR-0011).** Its PRs carry no `agent:*` label, no `Model:` line, and get no review-agent pass; `pr-lint` and `review-agent` skip when the author is `dependabot[bot]`. Bot identity is the provenance for those PRs, and Dependabot-triggered runs cannot read Actions secrets, so the review agent could not run on them regardless. They are gated by `ci` (`node`, `python`, `gitleaks`, `helm-lint`, `terraform-validate`) plus a human reading the changelog. Every other author, human or agent, fails without a label and a model. See ADR-0011 for the rejected alternatives.
 
+## Enforcement
+
+The table above is not advisory. A GitHub repository ruleset on `main` (source of truth: `.github/rulesets/main.json`, applied via `gh api`) enforces it:
+
+- No direct pushes, force-pushes, or deletion of `main`. Every change arrives by pull request, squash-merged, linear history.
+- Every `ci` job, `pr-lint`, and the review agent's `review` job are required status checks. A blocking review-agent finding (`REQUEST_CHANGES`) fails `review` and blocks the merge - the rubric below is a gate, not a comment. Dependabot PRs skip `review` per ADR-0011; GitHub treats a skipped required check as passing, so `ci` alone gates those.
+- No bypass actors, including the repository owner. If a required check is renamed and the ruleset blocks everything, the fix is a PR that edits `main.json` and a re-apply - not a bypass.
+- Zero required approvals: a single-maintainer repo cannot self-approve, so "a human merges" is the human control, and the review agent is the second reader.
+
+To change the ruleset, edit the JSON, open a PR, then after merge run from the repo root: `gh api -X PUT repos/jason-trentcyber/frontdesk-intake/rulesets/<id> --input .github/rulesets/main.json`.
+
 ## What agents must read first
 
 Before editing an area, load its ADR. The context pack (`CLAUDE.md`, `AGENTS.md`) lists which ADR covers which directory. An agent that changes behavior an ADR covers must either follow it or propose a superseding ADR in the same PR.
