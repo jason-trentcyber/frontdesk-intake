@@ -28,7 +28,7 @@ Any diff touching `worker/prompts/` or retrieval code (`worker/` ingestion/retri
 
 A prompt change invalidates every recorded completion (the replay key hashes the rendered prompt - ADR-0036), so a PR that edits `worker/prompts/*.md` without a corresponding `evals/fixtures/completions.json` diff will fail `eval` with `UnrecordedPrompt`. If the fixture diff is missing, say so as a blocking finding rather than waiting for CI.
 
-`evals/baseline.json` may only be raised by a human. `pr-lint` enforces it (a PR modifying that file must carry `agent:human`); if an agent-labeled PR modifies it anyway, that is blocking here too.
+`evals/baseline.json` may only be raised by a human. `pr-lint` enforces it (a PR modifying that file must carry `agent:human`); the prompt's "PR labels" line is written by the workflow from the GitHub event, so trust it. If that line shows `agent:human`, a baseline-only diff is legitimate and needs no eval evidence in the diff itself - the `eval` CI check on the same PR is the evidence, and it runs at the new floor. If the line shows an agent label and the diff modifies `evals/baseline.json`, that is blocking.
 
 ## 6. Obvious injection, SSRF, path traversal — blocking
 
