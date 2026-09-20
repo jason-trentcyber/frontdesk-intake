@@ -61,7 +61,10 @@ export interface PurgeOptions {
  */
 export async function purgeDemoOrgs(db: Db, options: PurgeOptions): Promise<PurgeOrgResult[]> {
   const batchSize = options.batchSize ?? DEFAULT_BATCH_SIZE;
-  const demoOrgs = await db.select({ id: orgs.id, slug: orgs.slug }).from(orgs).where(eq(orgs.isDemo, true));
+  const demoOrgs = await db
+    .select({ id: orgs.id, slug: orgs.slug })
+    .from(orgs)
+    .where(eq(orgs.isDemo, true));
 
   const results: PurgeOrgResult[] = [];
   for (const org of demoOrgs) {
@@ -71,7 +74,12 @@ export async function purgeDemoOrgs(db: Db, options: PurgeOptions): Promise<Purg
   return results;
 }
 
-async function purgeOrgRequests(db: Db, orgId: string, cutoff: Date, batchSize: number): Promise<number> {
+async function purgeOrgRequests(
+  db: Db,
+  orgId: string,
+  cutoff: Date,
+  batchSize: number,
+): Promise<number> {
   let total = 0;
   for (;;) {
     const { selectedCount, deletedCount } = await forOrg(db, orgId, async (tx, scopedOrgId) => {
@@ -176,7 +184,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       });
     })
     .catch((err: unknown) => {
-      logger.error("demo purge failed", { error: err instanceof Error ? err.message : String(err) });
+      logger.error("demo purge failed", {
+        error: err instanceof Error ? err.message : String(err),
+      });
       process.exitCode = 1;
     });
 }

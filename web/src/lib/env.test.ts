@@ -3,9 +3,11 @@ import { loadApiOrigin, loadDatabaseUrl, loadTurnstileSiteKey } from "./env";
 
 describe("loadDatabaseUrl", () => {
   it("returns DATABASE_URL when that's all that's set", () => {
-    expect(loadDatabaseUrl({ DATABASE_URL: "postgresql://frontdesk:frontdesk@localhost:5432/frontdesk" })).toBe(
-      "postgresql://frontdesk:frontdesk@localhost:5432/frontdesk",
-    );
+    expect(
+      loadDatabaseUrl({
+        DATABASE_URL: "postgresql://frontdesk:frontdesk@localhost:5432/frontdesk",
+      }),
+    ).toBe("postgresql://frontdesk:frontdesk@localhost:5432/frontdesk");
   });
 
   it("prefers DATABASE_APP_URL over DATABASE_URL when both are set (local dev)", () => {
@@ -24,7 +26,9 @@ describe("loadDatabaseUrl", () => {
 
 describe("loadApiOrigin", () => {
   it("returns API_ORIGIN when set", () => {
-    expect(loadApiOrigin({ API_ORIGIN: "http://frontdesk-api:80" })).toBe("http://frontdesk-api:80");
+    expect(loadApiOrigin({ API_ORIGIN: "http://frontdesk-api:80" })).toBe(
+      "http://frontdesk-api:80",
+    );
   });
 
   it("throws when missing - no default that would silently call the wrong place", () => {

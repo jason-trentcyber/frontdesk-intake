@@ -12,7 +12,12 @@ export interface Problem {
 
 const PROBLEM_CONTENT_TYPE = "application/problem+json";
 
-export function sendProblem(reply: FastifyReply, status: number, title: string, detail?: string): FastifyReply {
+export function sendProblem(
+  reply: FastifyReply,
+  status: number,
+  title: string,
+  detail?: string,
+): FastifyReply {
   const problem: Problem = { type: "about:blank", title, status, ...(detail ? { detail } : {}) };
   return reply.code(status).type(PROBLEM_CONTENT_TYPE).send(problem);
 }

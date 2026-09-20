@@ -9,7 +9,9 @@ const appUrl = process.env.DATABASE_APP_URL;
 const hasEnv = Boolean(ownerUrl && appUrl);
 
 describe.skipIf(!hasEnv)(
-  hasEnv ? "demo queue (F16, ADR-0007)" : "demo queue (F16, ADR-0007) [skipped: DATABASE_URL/DATABASE_APP_URL not set]",
+  hasEnv
+    ? "demo queue (F16, ADR-0007)"
+    : "demo queue (F16, ADR-0007) [skipped: DATABASE_URL/DATABASE_APP_URL not set]",
   () => {
     let ownerDb: Db;
     let appDb: Db;
@@ -38,14 +40,21 @@ describe.skipIf(!hasEnv)(
     async function makeOrg(): Promise<string> {
       const [org] = await ownerDb
         .insert(orgs)
-        .values({ slug: `demo-queue-test-${randomUUID()}`, name: "demo queue test org", isDemo: true })
+        .values({
+          slug: `demo-queue-test-${randomUUID()}`,
+          name: "demo queue test org",
+          isDemo: true,
+        })
         .returning({ id: orgs.id });
       if (!org) throw new Error("failed to insert test org");
       createdOrgIds.push(org.id);
       return org.id;
     }
 
-    async function makeRequest(orgId: string, overrides: Partial<typeof requests.$inferInsert> = {}) {
+    async function makeRequest(
+      orgId: string,
+      overrides: Partial<typeof requests.$inferInsert> = {},
+    ) {
       const [row] = await ownerDb
         .insert(requests)
         .values({
@@ -64,7 +73,10 @@ describe.skipIf(!hasEnv)(
     }
 
     it("getDemoOrg finds a real seeded org marked is_demo, never by slug", async () => {
-      const realDemoOrgs = await ownerDb.select({ id: orgs.id }).from(orgs).where(eq(orgs.isDemo, true));
+      const realDemoOrgs = await ownerDb
+        .select({ id: orgs.id })
+        .from(orgs)
+        .where(eq(orgs.isDemo, true));
       if (realDemoOrgs.length === 0) {
         throw new Error("expected at least one is_demo org - run `pnpm seed` first");
       }
@@ -106,11 +118,21 @@ describe.skipIf(!hasEnv)(
 
     it("an approved request contributes its reply_text; a request in any other status never does", async () => {
       const orgId = await makeOrg();
-      const approved = await makeRequest(orgId, { status: "approved", replyText: "the approved reply" });
+      const approved = await makeRequest(orgId, {
+        status: "approved",
+        replyText: "the approved reply",
+      });
 
       const queue = await getDemoQueue(appDb, orgId);
 
-      expect(queue).toEqual([{ kind: "approved", id: approved.id, subject: approved.subject, replyText: "the approved reply" }]);
+      expect(queue).toEqual([
+        {
+          kind: "approved",
+          id: approved.id,
+          subject: approved.subject,
+          replyText: "the approved reply",
+        },
+      ]);
     });
 
     it("requesterName/requesterEmail never appear anywhere in the result, even for a drafted request with a real draft present", async () => {
@@ -135,7 +157,9 @@ describe.skipIf(!hasEnv)(
 
       const queue = await getDemoQueue(appDb, orgId);
 
-      expect(queue).toEqual([{ kind: "status", id: row.id, subject: row.subject, status: "drafted" }]);
+      expect(queue).toEqual([
+        { kind: "status", id: row.id, subject: row.subject, status: "drafted" },
+      ]);
       const serialized = JSON.stringify(queue);
       expect(serialized).not.toContain(secretName);
       expect(serialized).not.toContain(secretEmail);

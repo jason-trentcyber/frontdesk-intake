@@ -45,7 +45,9 @@ describe("retentionHours", () => {
 // db/src/rls.test.ts, so `pnpm test` at the repo root stays green
 // without Postgres running.
 describe.skipIf(!hasEnv)(
-  hasEnv ? "demo org purge (#28, F17)" : "demo org purge (#28, F17) [skipped: DATABASE_URL/DATABASE_APP_URL not set]",
+  hasEnv
+    ? "demo org purge (#28, F17)"
+    : "demo org purge (#28, F17) [skipped: DATABASE_URL/DATABASE_APP_URL not set]",
   () => {
     let ownerDb: Db;
     let appDb: Db;
@@ -64,13 +66,18 @@ describe.skipIf(!hasEnv)(
       const demo = rows.find((o) => o.slug === "bright-smile-dental");
       const other = rows.find((o) => o.slug === "harbor-legal");
       if (!demo || !other) {
-        throw new Error("expected seed data (bright-smile-dental, harbor-legal) - run `pnpm seed` first");
+        throw new Error(
+          "expected seed data (bright-smile-dental, harbor-legal) - run `pnpm seed` first",
+        );
       }
       demoOrgId = demo.id;
       otherOrgId = other.id;
     });
 
-    async function makeRequest(orgId: string, overrides: Partial<typeof requests.$inferInsert> = {}) {
+    async function makeRequest(
+      orgId: string,
+      overrides: Partial<typeof requests.$inferInsert> = {},
+    ) {
       const [row] = await ownerDb
         .insert(requests)
         .values({
@@ -89,7 +96,10 @@ describe.skipIf(!hasEnv)(
     }
 
     async function requestExists(id: string): Promise<boolean> {
-      const rows = await ownerDb.select({ id: requests.id }).from(requests).where(eq(requests.id, id));
+      const rows = await ownerDb
+        .select({ id: requests.id })
+        .from(requests)
+        .where(eq(requests.id, id));
       return rows.length > 0;
     }
 
@@ -266,7 +276,11 @@ describe.skipIf(!hasEnv)(
     it("purges every demo org independently when more than one exists", async () => {
       const [secondDemoOrg] = await ownerDb
         .insert(orgs)
-        .values({ slug: `purge-test-demo-${randomUUID()}`, name: "purge test demo org", isDemo: true })
+        .values({
+          slug: `purge-test-demo-${randomUUID()}`,
+          name: "purge test demo org",
+          isDemo: true,
+        })
         .returning({ id: orgs.id });
       if (!secondDemoOrg) throw new Error("failed to insert second demo org");
       createdOrgIds.push(secondDemoOrg.id);

@@ -10,7 +10,11 @@ const migrationsFolder = path.resolve(path.dirname(fileURLToPath(import.meta.url
 // The hook Job (#21 PR C) starts as soon as its Pod is scheduled, which
 // can be before the Postgres StatefulSet's pod is Ready - retry the
 // initial connection rather than fail fast.
-async function waitForDatabase(connectionString: string, attempts = 30, delayMs = 2000): Promise<void> {
+async function waitForDatabase(
+  connectionString: string,
+  attempts = 30,
+  delayMs = 2000,
+): Promise<void> {
   for (let attempt = 1; attempt <= attempts; attempt++) {
     const client = new pg.Client({ connectionString });
     try {

@@ -13,7 +13,9 @@ const hasEnv = Boolean(ownerUrl && appUrl);
 // vitest summary, rather than failing, so `pnpm test` at the root still
 // passes without Postgres running.
 describe.skipIf(!hasEnv)(
-  hasEnv ? "row-level security (ADR-0018)" : "row-level security (ADR-0018) [skipped: DATABASE_URL/DATABASE_APP_URL not set]",
+  hasEnv
+    ? "row-level security (ADR-0018)"
+    : "row-level security (ADR-0018) [skipped: DATABASE_URL/DATABASE_APP_URL not set]",
   () => {
     let ownerDb: Db;
     let demoOrgId: string;
@@ -22,11 +24,15 @@ describe.skipIf(!hasEnv)(
 
     beforeAll(async () => {
       ownerDb = createDb(ownerUrl!);
-      const orgs = await ownerDb.execute<{ id: string; slug: string }>(sql`select id, slug from orgs`);
+      const orgs = await ownerDb.execute<{ id: string; slug: string }>(
+        sql`select id, slug from orgs`,
+      );
       const demo = orgs.rows.find((o) => o.slug === "bright-smile-dental");
       const other = orgs.rows.find((o) => o.slug === "harbor-legal");
       if (!demo || !other) {
-        throw new Error("expected seed data (bright-smile-dental, harbor-legal) - run `pnpm seed` first");
+        throw new Error(
+          "expected seed data (bright-smile-dental, harbor-legal) - run `pnpm seed` first",
+        );
       }
       demoOrgId = demo.id;
       otherOrgId = other.id;
@@ -80,7 +86,9 @@ describe.skipIf(!hasEnv)(
           throw new Error("expected at least one seeded action - run `pnpm seed` first");
         }
         const target = before.rows[0] as { id: string; reason: string | null };
-        const res = await client.query("update actions set reason = 'rls-test' where id = $1", [target.id]);
+        const res = await client.query("update actions set reason = 'rls-test' where id = $1", [
+          target.id,
+        ]);
         expect(res.rowCount).toBe(0);
         const after = await client.query("select reason from actions where id = $1", [target.id]);
         expect((after.rows[0] as { reason: string | null }).reason).toBe(target.reason);
@@ -107,7 +115,9 @@ describe.skipIf(!hasEnv)(
 
     it("resolve_membership returns nothing for an unknown email", async () => {
       await asApp(async (client) => {
-        const res = await client.query("select * from resolve_membership($1)", [`nobody-${randomUUID()}@example.com`]);
+        const res = await client.query("select * from resolve_membership($1)", [
+          `nobody-${randomUUID()}@example.com`,
+        ]);
         expect(res.rows).toHaveLength(0);
       });
     });

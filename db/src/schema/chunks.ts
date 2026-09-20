@@ -1,5 +1,16 @@
 import { sql } from "drizzle-orm";
-import { foreignKey, index, integer, pgPolicy, pgTable, text, timestamp, unique, uuid, vector } from "drizzle-orm/pg-core";
+import {
+  foreignKey,
+  index,
+  integer,
+  pgPolicy,
+  pgTable,
+  text,
+  timestamp,
+  unique,
+  uuid,
+  vector,
+} from "drizzle-orm/pg-core";
 import { tsvector } from "./custom-types.js";
 import { documents } from "./documents.js";
 

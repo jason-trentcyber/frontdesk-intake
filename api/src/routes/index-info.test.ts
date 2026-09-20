@@ -20,7 +20,9 @@ class NoopQueue implements Queue<TriageMessage> {
 }
 
 describe.skipIf(!hasEnv)(
-  hasEnv ? "GET /api/v1/orgs/:slug/index-info" : "GET /api/v1/orgs/:slug/index-info [skipped: DATABASE_APP_URL/DATABASE_URL not set]",
+  hasEnv
+    ? "GET /api/v1/orgs/:slug/index-info"
+    : "GET /api/v1/orgs/:slug/index-info [skipped: DATABASE_APP_URL/DATABASE_URL not set]",
   () => {
     let db: Db;
 
@@ -39,7 +41,10 @@ describe.skipIf(!hasEnv)(
 
     it("demo org -> 200 with model/dims/index params and live counts", async () => {
       const app = testApp();
-      const res = await app.inject({ method: "GET", url: "/api/v1/orgs/bright-smile-dental/index-info" });
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/v1/orgs/bright-smile-dental/index-info",
+      });
       expect(res.statusCode).toBe(200);
       const body = res.json();
       expect(body).toMatchObject({
@@ -60,7 +65,10 @@ describe.skipIf(!hasEnv)(
 
     it("unknown org -> 404", async () => {
       const app = testApp();
-      const res = await app.inject({ method: "GET", url: `/api/v1/orgs/${randomUUID()}/index-info` });
+      const res = await app.inject({
+        method: "GET",
+        url: `/api/v1/orgs/${randomUUID()}/index-info`,
+      });
       expect(res.statusCode).toBe(404);
     });
   },
