@@ -42,6 +42,7 @@ make down
 make lint          # eslint + prettier + ruff + pyright
 make test          # vitest + pytest (FakeProvider, no network)
 make eval          # evals/run.py against evals/golden, compares to baseline.json
+pnpm eval:export --org <slug>   # staff edits/rejects -> evals/candidates/<slug>.jsonl (gitignored, curate by hand)
 pnpm --filter web dev
 pnpm --filter api dev
 uv run --project worker python -m worker

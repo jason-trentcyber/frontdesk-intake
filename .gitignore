@@ -67,3 +67,8 @@ docs/diagrams/index.html
 # web/, and it regenerates on every dev run.
 web/AGENTS.md
 web/CLAUDE.md
+
+# #31: exported eval candidates may contain text a stranger typed into the
+# public form. They are curated by hand into evals/golden/, never committed raw.
+evals/candidates/*
+!evals/candidates/README.md

@@ -13,9 +13,29 @@ from pathlib import Path
 
 import pytest
 from evals.recorded import RecordedProvider, UnrecordedPrompt, prompt_key, save_fixtures
-from evals.run import Result, metrics_of, section_first_blocks
+from evals.run import HarnessError, Result, load_golden, metrics_of, section_first_blocks
 
 from llm import Message
+
+
+def test_load_golden_rejects_uncurated_candidate_lines(tmp_path: Path) -> None:
+    # A line straight out of `pnpm eval:export` still carries `provenance`;
+    # the harness must refuse it rather than score the model's own labels.
+    good = {
+        "id": "x-1",
+        "subject": "s",
+        "body": "b",
+        "expected_category": "billing",
+        "expected_urgency": "normal",
+        "expected_chunk": None,
+    }
+    (tmp_path / "ok.jsonl").write_text(json.dumps(good) + "\n")
+    assert len(load_golden(tmp_path)) == 1
+
+    candidate = {**good, "id": "x-2", "provenance": {"action": "edit"}}
+    (tmp_path / "ok.jsonl").write_text(json.dumps(candidate) + "\n")
+    with pytest.raises(HarnessError, match="provenance"):
+        load_golden(tmp_path)
 
 
 def test_prompt_key_is_stable_and_sensitive_to_every_input() -> None:

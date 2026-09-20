@@ -14,6 +14,7 @@
     "migrate": "tsx src/migrate.ts",
     "seed": "tsx src/seed.ts",
     "purge": "tsx src/purge.ts",
+    "eval:export": "tsx src/eval-export.ts",
     "check": "drizzle-kit check"
   },
   "dependencies": {

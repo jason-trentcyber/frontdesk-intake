@@ -24,7 +24,7 @@ deploy/observability/        Prometheus + Grafana on the Hermes VPS, scraping th
 deploy/values-eks.yaml        bootstrap layer's own EKS swap (ingress-nginx Service type) - distinct from deploy/chart/values-eks.yaml
 infra/hetzner/  Terraform: server, firewall, floating IP, cloud-init k3s
 infra/aws/      Terraform: EKS root, validate-only
-evals/          golden/*.jsonl, run.py, baseline.json
+evals/          golden/*.jsonl, run.py, baseline.json, fixtures/ (recorded LLM), candidates/ (gitignored exports)
 docs/           ADRs, governance, this file, review rubric
 .github/        workflows, PR template, CODEOWNERS
 ```
