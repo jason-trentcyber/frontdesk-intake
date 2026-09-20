@@ -79,7 +79,12 @@ function sqsFixture(): AdapterFixture {
       }
       dlqUrl = dlq.QueueUrl;
       queueUrl = main.QueueUrl;
-      return new SqsQueue<TestPayload>({ queueUrl, dlqUrl, region: awsRegion!, endpoint: awsEndpoint });
+      return new SqsQueue<TestPayload>({
+        queueUrl,
+        dlqUrl,
+        region: awsRegion!,
+        endpoint: awsEndpoint,
+      });
     },
     async teardown() {
       await client.send(new DeleteQueueCommand({ QueueUrl: queueUrl }));
@@ -89,7 +94,9 @@ function sqsFixture(): AdapterFixture {
 }
 
 function runContractTests(fixture: AdapterFixture): void {
-  const title = fixture.available ? `Queue contract: ${fixture.name}` : `Queue contract: ${fixture.name} [skipped: ${fixture.reason}]`;
+  const title = fixture.available
+    ? `Queue contract: ${fixture.name}`
+    : `Queue contract: ${fixture.name} [skipped: ${fixture.reason}]`;
 
   describe.skipIf(!fixture.available)(title, () => {
     let queue: Queue<TestPayload>;

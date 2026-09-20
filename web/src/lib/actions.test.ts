@@ -113,7 +113,11 @@ describe("submitPublicRequest", () => {
   it("maps a 403 (Turnstile failed server-side) to a verification error message", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 403 }));
 
-    const result = await submitPublicRequest("bright-smile-dental", INITIAL_SUBMIT_STATE, formData(VALID_FIELDS));
+    const result = await submitPublicRequest(
+      "bright-smile-dental",
+      INITIAL_SUBMIT_STATE,
+      formData(VALID_FIELDS),
+    );
 
     expect(result.status).toBe("error");
     expect(result.message).toMatch(/verification/i);
@@ -122,7 +126,11 @@ describe("submitPublicRequest", () => {
   it("maps a 404 (unknown org) to a not-accepting-requests message", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 404 }));
 
-    const result = await submitPublicRequest("no-such-org", INITIAL_SUBMIT_STATE, formData(VALID_FIELDS));
+    const result = await submitPublicRequest(
+      "no-such-org",
+      INITIAL_SUBMIT_STATE,
+      formData(VALID_FIELDS),
+    );
 
     expect(result.status).toBe("error");
     expect(result.message).toMatch(/accepting/i);
@@ -135,17 +143,20 @@ describe("submitPublicRequest", () => {
       INITIAL_SUBMIT_STATE,
       formData(VALID_FIELDS),
     );
-    expect(serverErrorResult).toEqual({ status: "error", message: "Something went wrong. Please try again." });
+    expect(serverErrorResult).toEqual({
+      status: "error",
+      message: "Something went wrong. Please try again.",
+    });
 
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockRejectedValue(new Error("connect ECONNREFUSED")),
-    );
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("connect ECONNREFUSED")));
     const networkErrorResult = await submitPublicRequest(
       "bright-smile-dental",
       INITIAL_SUBMIT_STATE,
       formData(VALID_FIELDS),
     );
-    expect(networkErrorResult).toEqual({ status: "error", message: "Something went wrong. Please try again." });
+    expect(networkErrorResult).toEqual({
+      status: "error",
+      message: "Something went wrong. Please try again.",
+    });
   });
 });

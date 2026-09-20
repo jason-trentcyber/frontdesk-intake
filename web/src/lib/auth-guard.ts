@@ -20,15 +20,17 @@ export interface AuthenticatedMembership extends Membership {
 // invocation, so it is never served a memoized value from a page render
 // that happened moments before - it always calls this fresh (ADR-0031
 // §5: three *independent* checks, not one check reused).
-const resolveAuthState = cache(async (): Promise<{ email: string | null; membership: Membership | null }> => {
-  const session = await getAuth().auth();
-  const email = session?.user?.email ?? null;
-  if (!email) {
-    return { email: null, membership: null };
-  }
-  const membership = await resolveMembership(getDb(), email);
-  return { email, membership };
-});
+const resolveAuthState = cache(
+  async (): Promise<{ email: string | null; membership: Membership | null }> => {
+    const session = await getAuth().auth();
+    const email = session?.user?.email ?? null;
+    if (!email) {
+      return { email: null, membership: null };
+    }
+    const membership = await resolveMembership(getDb(), email);
+    return { email, membership };
+  },
+);
 
 /**
  * For /app/layout.tsx and Server Components under /app/*. Redirects to

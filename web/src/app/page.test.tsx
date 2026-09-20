@@ -10,7 +10,9 @@ const appUrl = process.env.DATABASE_APP_URL;
 const hasEnv = Boolean(ownerUrl && appUrl);
 
 describe.skipIf(!hasEnv)(
-  hasEnv ? "/ landing page (F16)" : "/ landing page (F16) [skipped: DATABASE_URL/DATABASE_APP_URL not set]",
+  hasEnv
+    ? "/ landing page (F16)"
+    : "/ landing page (F16) [skipped: DATABASE_URL/DATABASE_APP_URL not set]",
   () => {
     let ownerDb: Db;
     let demoOrgId: string;
@@ -71,7 +73,11 @@ describe.skipIf(!hasEnv)(
     it("a drafted request with a real, distinctive draft-adjacent name/email -> never appears in the rendered page", async () => {
       const secretName = `SECRET-NAME-${randomUUID()}`;
       const secretEmail = `secret-${randomUUID()}@example.com`;
-      await makeRequest({ status: "drafted", requesterName: secretName, requesterEmail: secretEmail });
+      await makeRequest({
+        status: "drafted",
+        requesterName: secretName,
+        requesterEmail: secretEmail,
+      });
 
       const html = renderToStaticMarkup(await HomePage());
 

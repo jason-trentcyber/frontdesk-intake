@@ -7,7 +7,9 @@ import * as schema from "./schema/index.js";
 // Replaces the #21 issue's "middleware coverage test" (ADR-0018): every
 // exported table not on the NON_TENANT_TABLES allow-list must carry
 // org_id, RLS, and a policy in the same schema file it's defined in.
-const tables = (Object.values(schema) as unknown[]).filter((value): value is PgTable => is(value, PgTable));
+const tables = (Object.values(schema) as unknown[]).filter((value): value is PgTable =>
+  is(value, PgTable),
+);
 
 describe("tenant table coverage (ADR-0018)", () => {
   it("found tables to check", () => {
@@ -60,7 +62,9 @@ describe("auth schema coverage (ADR-0031, amends ADR-0018)", () => {
   const authTables = tables.filter((table) => getTableConfig(table).schema === "auth");
   const nonAuthTenantTables = tables.filter((table) => {
     const config = getTableConfig(table);
-    return config.schema !== "auth" && !(NON_TENANT_TABLES as readonly string[]).includes(config.name);
+    return (
+      config.schema !== "auth" && !(NON_TENANT_TABLES as readonly string[]).includes(config.name)
+    );
   });
 
   it("found at least one auth.* table", () => {
@@ -70,14 +74,20 @@ describe("auth schema coverage (ADR-0031, amends ADR-0018)", () => {
   it("no table in the auth schema has an org_id column", () => {
     for (const table of authTables) {
       const config = getTableConfig(table);
-      expect(config.columns.some((c) => c.name === "org_id"), `auth.${config.name} must not have org_id`).toBe(false);
+      expect(
+        config.columns.some((c) => c.name === "org_id"),
+        `auth.${config.name} must not have org_id`,
+      ).toBe(false);
     }
   });
 
   it("no table outside the auth schema (and not orgs) lacks an org_id column", () => {
     for (const table of nonAuthTenantTables) {
       const config = getTableConfig(table);
-      expect(config.columns.some((c) => c.name === "org_id"), `${config.name} is missing org_id`).toBe(true);
+      expect(
+        config.columns.some((c) => c.name === "org_id"),
+        `${config.name} is missing org_id`,
+      ).toBe(true);
     }
   });
 });

@@ -50,7 +50,11 @@ export async function submitPublicRequest(
     return { status: "error", message: "Please complete the verification and try again." };
   }
 
-  const payload: Record<string, string> = { subject, body, "cf-turnstile-response": turnstileToken };
+  const payload: Record<string, string> = {
+    subject,
+    body,
+    "cf-turnstile-response": turnstileToken,
+  };
   if (requesterName) payload.requesterName = requesterName;
   if (requesterEmail) payload.requesterEmail = requesterEmail;
 
