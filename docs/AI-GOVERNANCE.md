@@ -32,6 +32,8 @@ The table above is not advisory. A GitHub repository ruleset on `main` (source o
 
 - No direct pushes, force-pushes, or deletion of `main`. Every change arrives by pull request, squash-merged, linear history.
 - Every `ci` job, `pr-lint`, and the review agent's `review` job are required status checks. A blocking review-agent finding (`REQUEST_CHANGES`) fails `review` and blocks the merge - the rubric below is a gate, not a comment. Dependabot PRs skip `review` per ADR-0011; GitHub treats a skipped required check as passing, so `ci` alone gates those.
+- The `eval` job (ADR-0036) is one of those required checks and runs on every PR: replayed LLM completions, zero paid tokens, three deterministic metrics against `evals/baseline.json`.
+- `evals/baseline.json` is raised only by a human. `.github/CODEOWNERS` names it for intent; GitHub's code-owner review requirement cannot be enabled on a single-maintainer repo (the owner cannot approve their own PR), so `pr-lint` enforces the proxy: a PR that modifies that file must carry `agent:human`. Same reasoning as zero required approvals - the human opening the PR is the human control.
 - No bypass actors, including the repository owner. If a required check is renamed and the ruleset blocks everything, the fix is a PR that edits `main.json` and a re-apply - not a bypass.
 - Zero required approvals: a single-maintainer repo cannot self-approve, so "a human merges" is the human control, and the review agent is the second reader.
 

@@ -1,0 +1,162 @@
+{
+  "03e046dbb3a09192aead17d0c5dfa22c84f3d0141eff4a0f56d90b19129165f8": {
+    "finish_reason": "stop",
+    "input_tokens": 202,
+    "model": "anthropic/claude-haiku-4.5",
+    "output_tokens": 43,
+    "subject": "Parking near the office",
+    "text": "```json\n{\"category\": \"other\", \"urgency\": \"low\", \"summary\": \"Customer is asking about parking availability at the office building for their first visit next Tuesday.\"}\n```"
+  },
+  "0e094571e0f9e5cf098ae9c5305857ebf4aad035bf4818c9661103f8f896f20c": {
+    "finish_reason": "stop",
+    "input_tokens": 215,
+    "model": "anthropic/claude-haiku-4.5",
+    "output_tokens": 48,
+    "subject": "Bill doesn't match what I paid at my visit",
+    "text": "```json\n{\"category\": \"billing\", \"urgency\": \"normal\", \"summary\": \"Customer is questioning a $40 discrepancy between their estimated payment at their visit and their current statement.\"}\n```"
+  },
+  "148db65fed57f3875e5a7ded1c9b5b13bb86094b317a23c09cfb97319f5dda0e": {
+    "finish_reason": "stop",
+    "input_tokens": 209,
+    "model": "anthropic/claude-haiku-4.5",
+    "output_tokens": 40,
+    "subject": "Are two cleanings a year covered?",
+    "text": "```json\n{\"category\": \"insurance\", \"urgency\": \"normal\", \"summary\": \"Customer is asking whether their insurance plan covers two cleanings per year.\"}\n```"
+  },
+  "19640f29f2224278da6e3d8a4883e02d5cb3a42e0002331eae2fbc33f5249730": {
+    "finish_reason": "stop",
+    "input_tokens": 212,
+    "model": "anthropic/claude-haiku-4.5",
+    "output_tokens": 52,
+    "subject": "First dentist visit for a toddler",
+    "text": "```json\n{\"category\": \"clinical-question\", \"urgency\": \"low\", \"summary\": \"Customer is asking whether their 18-month-old daughter with eight teeth is old enough for a first dental visit.\"}\n```"
+  },
+  "1af9ed78826a701e0a1102471042e4a2297efbf70c5f19a3d9c535abad543ae5": {
+    "finish_reason": "stop",
+    "input_tokens": 218,
+    "model": "anthropic/claude-haiku-4.5",
+    "output_tokens": 54,
+    "subject": "Sending records to my new dentist",
+    "text": "```json\n{\"category\": \"other\", \"urgency\": \"normal\", \"summary\": \"Customer requests transfer of dental records and recent X-rays to a new dentist in Denver and asks what information is needed to process this.\"}\n```"
+  },
+  "27b11bd3aa19aec84707fff4ce2d4d05582a3f22339b6fce127f35643a08ae31": {
+    "finish_reason": "stop",
+    "input_tokens": 214,
+    "model": "anthropic/claude-haiku-4.5",
+    "output_tokens": 46,
+    "subject": "Payment plan for a crown and two fillings",
+    "text": "```json\n{\"category\": \"billing\", \"urgency\": \"normal\", \"summary\": \"Customer is requesting information about payment plan or financing options for an $1,800 treatment plan.\"}\n```"
+  },
+  "35aa8f20183295a1474f6e0c0eb9baf347fa51684939a76ea6dcb581d278638c": {
+    "finish_reason": "stop",
+    "input_tokens": 211,
+    "model": "anthropic/claude-haiku-4.5",
+    "output_tokens": 43,
+    "subject": "Do you take Delta Dental PPO?",
+    "text": "```json\n{\"category\": \"insurance\", \"urgency\": \"normal\", \"summary\": \"Customer is asking whether the business is in-network with Delta Dental PPO.\"}\n```"
+  },
+  "3c2d024995270a8e2296c1f15c48b5962ded3ebec02b83a6e1e7fc7c04306fb2": {
+    "finish_reason": "stop",
+    "input_tokens": 212,
+    "model": "anthropic/claude-haiku-4.5",
+    "output_tokens": 47,
+    "subject": "Temporary crown feels loose",
+    "text": "```json\n{\"category\": \"clinical-question\", \"urgency\": \"normal\", \"summary\": \"Customer is asking whether a loose temporary crown is normal or if they need to schedule an appointment.\"}\n```"
+  },
+  "40adc344fcc45dd2ea8dfc6b4e2086dc2e68d365432b8d0c7605d3a4c60f9991": {
+    "finish_reason": "stop",
+    "input_tokens": 205,
+    "model": "anthropic/claude-haiku-4.5",
+    "output_tokens": 46,
+    "subject": "Insurance card for first visit",
+    "text": "```json\n{\"category\": \"insurance\", \"urgency\": \"normal\", \"summary\": \"Customer is asking whether a physical insurance card or member ID is sufficient for their first appointment next week.\"}\n```"
+  },
+  "4f1379c23dc5781adb5bd046468cc12bcf26d719b1fc03d9666a40c622f15713": {
+    "finish_reason": "stop",
+    "input_tokens": 207,
+    "model": "anthropic/claude-haiku-4.5",
+    "output_tokens": 35,
+    "subject": "Open on Saturdays?",
+    "text": "```json\n{\"category\": \"scheduling\", \"urgency\": \"normal\", \"summary\": \"Customer is asking whether Saturday appointments are available.\"}\n```"
+  },
+  "507456eb3d9731693ec0b547edd51f46ad505bcfe6b6794ac9c370c87586ae07": {
+    "finish_reason": "stop",
+    "input_tokens": 215,
+    "model": "anthropic/claude-haiku-4.5",
+    "output_tokens": 46,
+    "subject": "Knocked out tooth - what do I do",
+    "text": "```json\n{\"category\": \"clinical-question\", \"urgency\": \"high\", \"summary\": \"Customer is seeking immediate guidance on how to handle their son's completely knocked out front tooth.\"}\n```"
+  },
+  "5cd198a5d717f805fdb52838ab399c4405f9955ec4dc96045f2b1929710dff98": {
+    "finish_reason": "stop",
+    "input_tokens": 209,
+    "model": "anthropic/claude-haiku-4.5",
+    "output_tokens": 44,
+    "subject": "Why did I pay at check-in?",
+    "text": "```json\n{\"category\": \"billing\", \"urgency\": \"normal\", \"summary\": \"Customer is asking why they were charged $85 at check-in before insurance processing.\"}\n```"
+  },
+  "698f6888bce8197672641552864727a9073357d6a8b7a2f5b3763c10521208a1": {
+    "finish_reason": "stop",
+    "input_tokens": 203,
+    "model": "anthropic/claude-haiku-4.5",
+    "output_tokens": 48,
+    "subject": "Friday after Thanksgiving",
+    "text": "```json\n{\"category\": \"scheduling\", \"urgency\": \"low\", \"summary\": \"Customer wants to schedule a cleaning appointment for the Friday after Thanksgiving and is asking about office availability that day.\"}\n```"
+  },
+  "742cd3a88593591ef94f977fe32e33751f6db468a6c7a82c06049070b040c9d0": {
+    "finish_reason": "stop",
+    "input_tokens": 206,
+    "model": "anthropic/claude-haiku-4.5",
+    "output_tokens": 51,
+    "subject": "Eating after a filling",
+    "text": "```json\n{\"category\": \"clinical-question\", \"urgency\": \"low\", \"summary\": \"Customer is asking how long to wait before eating after receiving a filling this morning while their mouth is still numb.\"}\n```"
+  },
+  "7db330bb3f1ac75f91904583970e46b23f8d87f7d738957e60ee4db61d2dfd52": {
+    "finish_reason": "stop",
+    "input_tokens": 208,
+    "model": "anthropic/claude-haiku-4.5",
+    "output_tokens": 43,
+    "subject": "Dental supply vendor introduction",
+    "text": "```json\n{\"category\": \"other\", \"urgency\": \"low\", \"summary\": \"A dental supply vendor is requesting contact information for the practice's purchasing decision-maker.\"}\n```"
+  },
+  "b02bdfc5fd4cba6c740df18352cbfd00f2ab126e1cc7beeb071ef859bbfa52b5": {
+    "finish_reason": "stop",
+    "input_tokens": 215,
+    "model": "anthropic/claude-haiku-4.5",
+    "output_tokens": 51,
+    "subject": "Whitening before a wedding",
+    "text": "```json\n{\"category\": \"scheduling\", \"urgency\": \"normal\", \"summary\": \"Customer is asking about the duration and number of visits required for in-office teeth whitening before a wedding in three weeks.\"}\n```"
+  },
+  "bc5ad35ad45b04fb8581b4f61bfa08ea9c71e630444663b79e8457cbcf5c8edb": {
+    "finish_reason": "stop",
+    "input_tokens": 211,
+    "model": "anthropic/claude-haiku-4.5",
+    "output_tokens": 53,
+    "subject": "Aetna DMO coverage",
+    "text": "```json\n{\"category\": \"insurance\", \"urgency\": \"normal\", \"summary\": \"Customer is asking whether their Aetna DMO insurance plan covers visits at the office or if the office is out of network.\"}\n```"
+  },
+  "d5e82ef934b893bb26fbdfbbce4928aa01aba8d2b7e28a43a630d1b907e0a71c": {
+    "finish_reason": "stop",
+    "input_tokens": 207,
+    "model": "anthropic/claude-haiku-4.5",
+    "output_tokens": 38,
+    "subject": "How long is a first appointment?",
+    "text": "```json\n{\"category\": \"scheduling\", \"urgency\": \"low\", \"summary\": \"Customer is asking about the typical duration of a first appointment.\"}\n```"
+  },
+  "d9416b3077759d797952acb2230d198dddf733033a78c74ff5eeb4a16858739b": {
+    "finish_reason": "stop",
+    "input_tokens": 206,
+    "model": "anthropic/claude-haiku-4.5",
+    "output_tokens": 52,
+    "subject": "Hiring hygienists?",
+    "text": "```json\n{\"category\": \"other\", \"urgency\": \"low\", \"summary\": \"Applicant inquires about job openings for a dental hygienist position and requests information on how to submit a resume.\"}\n```"
+  },
+  "ef3b2c44022e258ac904c54d41afd3f4bb13834a18b9b4bd8de93d52cf1a3932": {
+    "finish_reason": "stop",
+    "input_tokens": 208,
+    "model": "anthropic/claude-haiku-4.5",
+    "output_tokens": 47,
+    "subject": "No insurance - is there a cash price?",
+    "text": "```json\n{\"category\": \"billing\", \"urgency\": \"normal\", \"summary\": \"Customer is asking about cash pricing and potential discounts for out-of-pocket dental services without insurance.\"}\n```"
+  }
+}

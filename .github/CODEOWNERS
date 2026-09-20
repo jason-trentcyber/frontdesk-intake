@@ -1,0 +1,6 @@
+# The eval baseline is only raised by a human (ADR-0008, ADR-0036). GitHub's
+# "require review from code owners" cannot be turned on here - a single
+# maintainer cannot approve their own PR - so this file records intent and
+# the enforcement is pr-lint: a PR whose diff touches evals/baseline.json
+# must carry the agent:human label. See docs/AI-GOVERNANCE.md -> Enforcement.
+/evals/baseline.json @jason-trentcyber

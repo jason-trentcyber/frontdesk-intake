@@ -37,7 +37,7 @@ Six guardrails, all visible in this repo:
 1. **Context pack** — `CLAUDE.md`, `AGENTS.md`, `docs/conventions.md`, ADRs. Agents read before they write.
 2. **Provenance** — every PR has one `agent:*` label and a `Model:` line; co-author trailers are kept. Enforced by `pr-lint`.
 3. **Blocking review agent** — Claude Code headless reviews every PR against `docs/review-rubric.md`; `blocking` findings fail the check. A human still approves.
-4. **Eval gate** — *specified, not built ([#30](https://github.com/jason-trentcyber/frontdesk-intake/issues/30)).* The design: prompt and retrieval changes must not regress `evals/baseline.json`, and the baseline is only raised by a human commit. `evals/golden/` is empty today and no eval job runs in CI.
+4. **Eval gate** — `evals/run.py` runs 20 labeled requests through the shipped classifier and retrieval against the demo corpus, with LLM completions replayed from recorded fixtures so CI spends nothing (ADR-0036). Three metrics — classification accuracy, recall@5, recall@1 — may not drop below `evals/baseline.json`; the `eval` check is required on every PR, and the baseline is only raised by a human-labeled PR. Its first run measured a classifier parse bug (accuracy 0.20) that production had never exercised.
 5. **Governance** — `docs/AI-GOVERNANCE.md`: who may do what, what always needs a human.
 6. **Ops loop** — *specified, not built ([#32](https://github.com/jason-trentcyber/frontdesk-intake/issues/32)).* The design: a scheduled agent with read-only cluster access files issues with evidence and never applies changes. It depends on off-node Prometheus/Loki ([#52](https://github.com/jason-trentcyber/frontdesk-intake/issues/52)), which is also not built.
 

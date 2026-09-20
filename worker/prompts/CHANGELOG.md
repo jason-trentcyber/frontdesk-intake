@@ -1,11 +1,10 @@
 # Prompt changelog
 
 Every prompt file under `worker/prompts/` is versioned here (S7 — REQUIREMENTS.md
-§5). A prompt change is a PR like any other and (per `docs/review-rubric.md`)
-triggers the eval gate once `evals/baseline.json` exists (#30). Until then, per
-ADR-0023 §3's standing obligation, a PR touching these files says plainly in
-its body that the gate was unavailable rather than fabricating a recall@5 or
-accuracy number.
+§5). A prompt change is a PR like any other and runs the eval gate (ADR-0036):
+the replay fixtures in `evals/fixtures/completions.json` are keyed on the
+rendered prompt, so editing a prompt invalidates them and the PR must include
+a `make eval ARGS=--record` re-record (human-run, ~$0.01) and its fixture diff.
 
 `drafts.prompt_version` records which entry below produced a given draft.
 
