@@ -15,7 +15,9 @@ describe("GET /readyz", () => {
 
   it("returns 503 problem+json when the database check fails - no live DB needed for this one", async () => {
     const app = Fastify();
-    const brokenDb = { execute: () => Promise.reject(new Error("connection refused")) } as unknown as Db;
+    const brokenDb = {
+      execute: () => Promise.reject(new Error("connection refused")),
+    } as unknown as Db;
     registerReadyzRoute(app, brokenDb);
     const res = await app.inject({ method: "GET", url: "/readyz" });
     expect(res.statusCode).toBe(503);

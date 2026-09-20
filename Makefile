@@ -45,7 +45,9 @@ seed:
 
 lint:
 	pnpm lint
+	pnpm format
 	cd worker && uv run ruff check .
+	cd worker && uv run ruff format --check .
 
 typecheck:
 	pnpm typecheck

@@ -44,7 +44,9 @@ export function loadApiOrigin(source: Record<string, string | undefined> = proce
  * missing key should fail the render loudly rather than silently ship a
  * form with no working challenge widget.
  */
-export function loadTurnstileSiteKey(source: Record<string, string | undefined> = process.env): string {
+export function loadTurnstileSiteKey(
+  source: Record<string, string | undefined> = process.env,
+): string {
   const turnstileSiteKey = source.TURNSTILE_SITE_KEY;
   if (!turnstileSiteKey) {
     throw new Error("TURNSTILE_SITE_KEY is required");

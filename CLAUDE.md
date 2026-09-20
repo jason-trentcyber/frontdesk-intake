@@ -39,7 +39,7 @@ frontdesk is an AI-assisted request desk for small businesses, built in public a
 ```
 make up            # Postgres (pgvector, pgmq) + LocalStack via $(CONTAINER)
 make down
-make lint          # eslint + prettier + ruff + pyright
+make lint          # eslint + prettier --check + ruff check + ruff format --check
 make test          # vitest + pytest (FakeProvider, no network)
 make eval          # evals/run.py against evals/golden, compares to baseline.json
 pnpm eval:export --org <slug>   # staff edits/rejects -> evals/candidates/<slug>.jsonl (gitignored, curate by hand)

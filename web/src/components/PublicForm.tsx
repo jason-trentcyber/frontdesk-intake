@@ -54,7 +54,11 @@ export function PublicForm({ slug, orgName, turnstileSiteKey }: PublicFormProps)
           purely cosmetic - not "invisible" mode, which is a widget-level
           setting requiring a Privacy Addendum reference we don't have. */}
       <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
-      <div className="cf-turnstile" data-sitekey={turnstileSiteKey} data-appearance="interaction-only" />
+      <div
+        className="cf-turnstile"
+        data-sitekey={turnstileSiteKey}
+        data-appearance="interaction-only"
+      />
       {state.status === "error" && (
         <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
           {state.message}

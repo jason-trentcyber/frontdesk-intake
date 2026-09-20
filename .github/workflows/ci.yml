@@ -40,6 +40,14 @@ jobs:
           pnpm --version
           pnpm lint
 
+      # `make format` is documented as a contributor check; without this
+      # step it had never been green (#93). Same idea as the python job's
+      # `ruff format --check`. Generated trees are in .prettierignore.
+      - name: Format check
+        run: |
+          pnpm exec prettier --version
+          pnpm format
+
       - name: Typecheck
         run: |
           pnpm --version

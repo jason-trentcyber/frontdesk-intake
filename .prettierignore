@@ -13,3 +13,15 @@ pnpm-lock.yaml
 # glob, not two literal names, so a future third contract file doesn't need
 # this file touched again.
 docs/contracts/*.schema.json
+
+# Helm templates are Go templates, not YAML documents - prettier cannot
+# parse them. helm lint + kubeconform in CI (helm-lint job) validate them.
+deploy/chart/templates/
+
+# drizzle-kit output (db/drizzle/meta/*.json, `pnpm generate`): regenerated
+# byte-for-byte, same reasoning as docs/contracts/*.schema.json above.
+db/drizzle/meta/
+
+# docs/diagrams/ is a generated archify export published by pages.yml
+# (ADR-0034); the HTML alone is 35k lines. Not hand-edited.
+docs/diagrams/
