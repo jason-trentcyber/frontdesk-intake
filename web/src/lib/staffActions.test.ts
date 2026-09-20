@@ -200,5 +200,78 @@ describe.skipIf(!hasEnv)(
       expect(action?.reason).toBe("duplicate of an earlier request");
       expect(action?.after).toEqual({ status: "rejected", replyText: null, draftVersion: null });
     });
+
+    // /app/[id] hides the action forms once a request is approved or
+    // rejected, but a Server Action is a POST endpoint reachable without
+    // ever rendering that page - the same reasoning ADR-0031 §5 applies
+    // to the membership check. Without the guard, re-approving a
+    // rejected request publishes a reply on the public /t/<token> page
+    // for a request staff had declined.
+    describe("a resolved request cannot be actioned again", () => {
+      async function rejectedRequest(): Promise<string> {
+        const requestId = await makeRequest();
+        const form = new FormData();
+        form.set("reason", "declined");
+        await expect(rejectRequestAction(requestId, form)).rejects.toBeTruthy();
+        return requestId;
+      }
+
+      it("approve: refuses, leaving the rejection and its reply_text intact", async () => {
+        const requestId = await rejectedRequest();
+        await ownerDb.insert(drafts).values({
+          orgId: mockOrgId,
+          requestId,
+          version: 1,
+          body: "a reply that must never be published",
+          citations: [],
+          confidence: "0.900",
+          model: "fake",
+          promptVersion: "v1",
+        });
+
+        await expect(approveRequestAction(requestId)).rejects.toThrow(/already been rejected/i);
+
+        const [row] = await ownerDb.select().from(requests).where(eq(requests.id, requestId));
+        expect(row?.status).toBe("rejected");
+        expect(row?.replyText).toBeNull();
+      });
+
+      it("edit & approve: refuses, and writes no new draft version", async () => {
+        const requestId = await rejectedRequest();
+
+        const form = new FormData();
+        form.set("body", "a reply that must never be published");
+        await expect(editApproveRequestAction(requestId, form)).rejects.toThrow(
+          /already been rejected/i,
+        );
+
+        const [row] = await ownerDb.select().from(requests).where(eq(requests.id, requestId));
+        expect(row?.status).toBe("rejected");
+        expect(row?.replyText).toBeNull();
+
+        const draftRows = await ownerDb
+          .select()
+          .from(drafts)
+          .where(eq(drafts.requestId, requestId));
+        expect(draftRows).toHaveLength(0);
+      });
+
+      it("reject: refuses to re-reject, leaving the original audit row the only one", async () => {
+        const requestId = await rejectedRequest();
+
+        const form = new FormData();
+        form.set("reason", "a second, different reason");
+        await expect(rejectRequestAction(requestId, form)).rejects.toThrow(
+          /already been rejected/i,
+        );
+
+        const actionRows = await ownerDb
+          .select()
+          .from(actions)
+          .where(and(eq(actions.requestId, requestId), eq(actions.kind, "reject")));
+        expect(actionRows).toHaveLength(1);
+        expect(actionRows[0]?.reason).toBe("declined");
+      });
+    });
   },
 );
