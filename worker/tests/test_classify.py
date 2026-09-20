@@ -61,6 +61,29 @@ async def test_valid_json_response_is_parsed() -> None:
     assert result.output_tokens == 5
 
 
+@pytest.mark.parametrize(
+    "fenced",
+    [
+        '```json\n{"category": "billing", "urgency": "high", "summary": "wants a refund"}\n```',
+        '```\n{"category": "billing", "urgency": "high", "summary": "wants a refund"}\n```',
+        '  ```json\n{"category": "billing", "urgency": "high", "summary": "wants a refund"}\n```  \n',
+    ],
+)
+async def test_fenced_json_response_is_parsed(fenced: str) -> None:
+    # #133: the real provider returns the object wrapped in a Markdown code
+    # fence despite the prompt. The first shape is verbatim from
+    # evals/fixtures/completions.json; the others are tolerated variants.
+    provider = ScriptedProvider(text=fenced)
+
+    result = await classify_and_route(
+        provider, _CATEGORIES, _LANES, "Refund?", "I want my money back"
+    )
+
+    assert result.category == "billing"
+    assert result.urgency == "high"
+    assert result.summary == "wants a refund"
+
+
 async def test_route_assigns_lane_from_category() -> None:
     provider = ScriptedProvider(
         text=json.dumps(
