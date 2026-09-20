@@ -79,9 +79,17 @@ jobs:
         env:
           BASE_REF: ${{ github.base_ref }}
           TRUNCATED: ${{ steps.diff.outputs.truncated }}
+          # Labels come from the event payload, not the diff, so the reviewer
+          # can check provenance-gated rules (rubric 5: evals/baseline.json
+          # needs agent:human) without taking the author's word for it. The
+          # PR author cannot forge this line - it is written by the workflow,
+          # outside the untrusted diff block.
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ', ') }}
         run: |
           {
             echo "Review this pull request diff against your system prompt rubric."
+            echo
+            echo "PR labels (from the GitHub event, not author-editable text): ${PR_LABELS:-none}"
             echo
             echo "Changed files:"
             cat changed_files.txt
