@@ -1,5 +1,16 @@
 import { sql } from "drizzle-orm";
-import { foreignKey, integer, jsonb, numeric, pgPolicy, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  foreignKey,
+  integer,
+  jsonb,
+  numeric,
+  pgPolicy,
+  pgTable,
+  text,
+  timestamp,
+  unique,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { requests } from "./requests.js";
 
 // Append-only from the app role's point of view (F12 audit trail): select
@@ -26,6 +37,29 @@ export const drafts = pgTable(
       columns: [t.orgId, t.requestId],
       foreignColumns: [requests.orgId, requests.id],
     }).onDelete("cascade"),
+    // Both writers of this table compute the next version by reading the
+    // current maximum and adding one: the worker's triage pipeline
+    // (worker/frontdesk_worker/pipeline.py, _next_draft_version) and
+    // 26b's edit-then-approve (web/src/lib/staffActions.ts). A
+    // read-then-insert is not atomic across concurrent transactions, so
+    // without this constraint two of them can both observe version N and
+    // both insert N+1 - which Postgres accepts.
+    //
+    // That matters because "the latest version is the current draft" is
+    // the invariant 26b's detail page and edit flow are built on
+    // (web/src/lib/requestDetail.ts) - there is deliberately no
+    // is_winning column. With two rows at the same version, `order by
+    // version desc limit 1` picks one arbitrarily while
+    // requests.reply_text holds whichever transaction committed last, so
+    // the page and the published reply can silently disagree. RLS does
+    // not catch it: both rows are correctly org-scoped.
+    //
+    // A unique constraint turns that into a failed insert instead. Both
+    // call sites already handle a failed write correctly - the worker
+    // leaves the request at 'triaging' and re-triages on redelivery
+    // (pipeline.py's module docstring), and the Server Action's
+    // forOrg() transaction rolls back with nothing written.
+    unique("drafts_org_id_request_id_version_unique").on(t.orgId, t.requestId, t.version),
     pgPolicy("org_isolation_select", {
       for: "select",
       to: "frontdesk_app",

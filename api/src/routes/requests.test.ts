@@ -245,15 +245,23 @@ describe.skipIf(!hasEnv)(
 
       it("does not create a requests row", async () => {
         const { app } = buildTestApp(alwaysTrue);
-        const before = await ownerDb.select().from(requests);
+        // Counted scoped to the demo org, not across the whole table:
+        // an unscoped `select().from(requests)` sees rows other packages'
+        // suites are inserting concurrently (`pnpm -r test` runs web/ and
+        // api/ against the same Postgres), so the count moved between the
+        // two reads and this test failed on a write it never made. Scoping
+        // by org_id is also what AGENTS.md requires of every query on a
+        // tenant table.
+        const countDemoRequests = async () =>
+          (await ownerDb.select().from(requests).where(eq(requests.orgId, demoOrgId))).length;
+        const before = await countDemoRequests();
         const res = await app.inject({
           method: "POST",
           url: "/api/v1/orgs/bright-smile-dental/requests",
           payload: { body: "b", "cf-turnstile-response": "token" },
         });
         expect(res.statusCode).toBe(400);
-        const after = await ownerDb.select().from(requests);
-        expect(after).toHaveLength(before.length);
+        expect(await countDemoRequests()).toBe(before);
       });
     });
   },

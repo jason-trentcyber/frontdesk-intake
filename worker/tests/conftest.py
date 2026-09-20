@@ -131,12 +131,19 @@ class OrgFactory:
         model: str = "anthropic/claude-haiku-4.5",
         created_at: datetime | None = None,
     ) -> None:
+        # `version` is allocated as max+1 per (org_id, request_id) rather
+        # than hardcoded, because drafts_org_id_request_id_version_unique
+        # (migration 0008) makes a second draft for the same request a
+        # constraint violation otherwise. Same allocation production uses
+        # (web/src/lib/staffActions.ts), so a test that drafts twice
+        # exercises the real shape instead of a state the DB rejects.
         if created_at is None:
             await self._conn.execute(
                 """
                 insert into drafts (org_id, request_id, version, body, confidence, model,
                                      prompt_version, tokens_in, tokens_out)
-                values ($1, $2, 1, 'test draft', 0, $3, 'test', $4, $5)
+                select $1, $2, coalesce(max(d.version), 0) + 1, 'test draft', 0, $3, 'test', $4, $5
+                from drafts d where d.org_id = $1 and d.request_id = $2
                 """,
                 org_id,
                 request_id,
@@ -149,7 +156,9 @@ class OrgFactory:
                 """
                 insert into drafts (org_id, request_id, version, body, confidence, model,
                                      prompt_version, tokens_in, tokens_out, created_at)
-                values ($1, $2, 1, 'test draft', 0, $3, 'test', $4, $5, $6)
+                select $1, $2, coalesce(max(d.version), 0) + 1, 'test draft', 0, $3, 'test', $4,
+                       $5, $6
+                from drafts d where d.org_id = $1 and d.request_id = $2
                 """,
                 org_id,
                 request_id,
