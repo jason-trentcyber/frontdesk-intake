@@ -4,7 +4,7 @@ An AI-assisted request desk for small businesses, built in public as an **AI-fir
 
 Customers submit requests through a public form. The system classifies each request, routes it to a lane, retrieves the business's own documents, and drafts a cited reply. Staff approve, edit, or reject. The engineering *process* (agents and humans on one repo, with guardrails from ideation to operations) is as much the deliverable as the product.
 
-**Status:** deployed and serving on a single k3s node. Public intake, tracking, and staff sign-in work end to end. The staff queue is read-only for now — request detail, citations, and approve/edit/reject are [#26](https://github.com/jason-trentcyber/frontdesk-intake/issues/26). Two of the six SDLC guardrails below are specified but not built yet; each says so.
+**Status:** deployed and serving on a single k3s node. Public intake, tracking, staff sign-in, the staff queue, request detail with citations, and approve / edit / reject with an audit trail all work end to end. Five of the six SDLC guardrails below are built and enforced; the sixth says so.
 
 **Live:** [frontdesk.jtrent.dev](https://frontdesk.jtrent.dev) · Board: [projects/1](https://github.com/users/jason-trentcyber/projects/1) · Docs: [`REQUIREMENTS.md`](REQUIREMENTS.md), [`docs/adr/`](docs/adr/README.md), [`docs/AI-GOVERNANCE.md`](docs/AI-GOVERNANCE.md)
 
@@ -32,18 +32,27 @@ Next.js web + Fastify API + Python worker on one Helm chart, k3s on a single Het
 
 ## The AI-first SDLC story
 
-Six guardrails, all visible in this repo:
+Six guardrails, all visible in this repo. Each links to the moment it did its job.
 
-1. **Context pack** — `CLAUDE.md`, `AGENTS.md`, `docs/conventions.md`, ADRs. Agents read before they write.
-2. **Provenance** — every PR has one `agent:*` label and a `Model:` line; co-author trailers are kept. Enforced by `pr-lint`.
-3. **Blocking review agent** — Claude Code headless reviews every PR against `docs/review-rubric.md`; `blocking` findings fail the check. A human still approves.
-4. **Eval gate** — `evals/run.py` runs 20 labeled requests through the shipped classifier and retrieval against the demo corpus, with LLM completions replayed from recorded fixtures so CI spends nothing (ADR-0036). Three metrics — classification accuracy, recall@5, recall@1 — may not drop below `evals/baseline.json`; the `eval` check is required on every PR, and the baseline is only raised by a human-labeled PR. Its first run measured a classifier parse bug (accuracy 0.20) that production had never exercised.
-5. **Governance** — `docs/AI-GOVERNANCE.md`: who may do what, what always needs a human.
+1. **Context pack** — `CLAUDE.md`, `AGENTS.md`, `docs/conventions.md`, 36 ADRs. Agents read before they write, and an agent that disagrees with an ADR must supersede it in the same PR, never edit it.
+2. **Provenance** — every PR has one `agent:*` label and a `Model:` line; co-author trailers are kept. Enforced by `pr-lint`, which also refuses to let an agent-labelled PR raise the eval baseline.
+3. **Blocking review agent** — Claude Code headless reviews every PR against `docs/review-rubric.md`; `blocking` findings fail a required check. See it [block #92 seven times](https://github.com/jason-trentcyber/frontdesk-intake/pull/92#pullrequestreview-5171867592) (an ADR-0002 naming violation, among others) before that PR merged clean, and [catch a CI password placeholder in #134](https://github.com/jason-trentcyber/frontdesk-intake/pull/134) that would have broken every future merge. A human still merges.
+4. **Eval gate** — `evals/run.py` runs 20 labeled requests through the shipped classifier and retrieval against the demo corpus, with LLM completions replayed from recorded fixtures so CI spends nothing ([ADR-0036](docs/adr/0036-deterministic-eval-gate.md)). Three metrics — classification accuracy, recall@5, recall@1 — may not drop below `evals/baseline.json`; `eval` is a required check on every PR. **Its first run found a production bug**: the model fences its JSON, the parser didn't strip it, accuracy measured 0.20 ([#133](https://github.com/jason-trentcyber/frontdesk-intake/issues/133)). Fixed in [#136](https://github.com/jason-trentcyber/frontdesk-intake/pull/136); the baseline was raised to 1.0 by a human in [#137](https://github.com/jason-trentcyber/frontdesk-intake/pull/137). Staff edits and rejections feed the golden set via `pnpm eval:export` ([#140](https://github.com/jason-trentcyber/frontdesk-intake/pull/140)).
+5. **Governance** — `docs/AI-GOVERNANCE.md`: who may do what, what always needs a human — and a [GitHub ruleset](.github/rulesets/main.json) on `main` that enforces the table: 16 required checks, no bypass actors, the owner included.
 6. **Ops loop** — *specified, not built ([#32](https://github.com/jason-trentcyber/frontdesk-intake/issues/32)).* The design: a scheduled agent with read-only cluster access files issues with evidence and never applies changes. It depends on off-node Prometheus/Loki ([#52](https://github.com/jason-trentcyber/frontdesk-intake/issues/52)), which is also not built.
 
 ## Cost
 
-_Table pending ([#33](https://github.com/jason-trentcyber/frontdesk-intake/issues/33)): OpenRouter vs Bedrock vs Hetzner GPU vs Ollama at the sized workload, with break-even._
+What one triaged request costs, and where the LLM would be cheaper to own than to rent. Per-request figure is measured, not estimated ([ADR-0023 §5](docs/adr/0023-worker-runtime-shape.md): classify ≈ 600 in / 30 out, draft ≈ 2,800 in / 350 out, Claude Haiku 4.5 at $1 / $5 per million tokens = **$0.0053**). Hetzner prices are list, ex-VAT, read from their price API on 2026-09-20; Bedrock's Haiku 4.5 list price equals Anthropic's.
+
+| Option | Fixed / month | Per request | 50 req/mo (demo) | 500 req/mo | Break-even vs. API |
+|---|---|---|---|---|---|
+| **OpenRouter → Haiku 4.5** (deployed) | €7.10 node | $0.0053 | $0.27 | $2.65 | — |
+| **Bedrock → Haiku 4.5** | €7.10 node; +$73 only if the cluster also moves to EKS | $0.0053 | $0.27 | $2.65 | same tokens, same price; you pay for the AWS account boundary, not the model |
+| **Hetzner GEX45** (RTX PRO 4000, 24 GB) + open-weights model | €214 (+€209 setup) | ≈ $0 | €214 | €214 | ≈ **47,000 req/mo** |
+| **Hetzner cx53** (16 vCPU / 32 GB) + Ollama on CPU | €35 | ≈ $0 | €35 | €35 | ≈ **7,700 req/mo**, at CPU latency (tens of seconds per draft) |
+
+Reading it: below roughly 8,000 requests a month, renting tokens is cheaper than the smallest box that can run a model, and the OpenRouter key is hard-capped at $10 (≈ 1,900 requests) so a bug cannot exceed that. The GPU line is the cost of *never sending a customer's text to a vendor* — a data-residency decision, not a cost one, until volume is ~50× the demo. The Ollama adapter is [#38](https://github.com/jason-trentcyber/frontdesk-intake/issues/38); the interface it would implement is the same one Bedrock already does.
 
 ## Switch to Bedrock
 
@@ -63,11 +72,14 @@ cd frontdesk-intake
 cp .env.example .env
 make up               # postgres (pgvector + pgmq) + localstack
 pnpm install
-cd worker && uv sync && cd ..
-make test
+cd worker && uv sync && uv run python scripts/fetch_model.py && cd ..
+make migrate && make seed
+set -a && . ./.env && set +a   # the DB-backed suites skip without these vars
+make test             # vitest + pytest against the local Postgres
+make eval             # the eval gate, replayed fixtures, no API key needed
 ```
 
-Podman instead of Docker: prefix every `make` target with `CONTAINER=podman`, e.g. `CONTAINER=podman make up`.
+Podman instead of Docker: prefix every `make` target with `CONTAINER=podman`, e.g. `CONTAINER=podman make up`. The LLM runs as `LLM_PROVIDER=fake` by default - no vendor key needed to run everything above.
 
 ## Caveats
 
