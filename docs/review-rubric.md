@@ -24,11 +24,11 @@ Cross-check the diff against the ADR map in `CLAUDE.md` for every directory touc
 
 ## 5. Prompt changes without an eval run
 
-Any diff touching `worker/prompts/` or retrieval code (`worker/` ingestion/retrieval per ADR-0005) needs evidence in the PR (body, or a checked-in `evals/baseline.json` diff, or CI eval-gate output referenced) that `make eval` was run and did not drop recall@5 or classification accuracy below baseline. No such evidence: blocking. `evals/baseline.json` itself may only be raised by a human commit — flag if an agent-authored PR modifies it.
+Any diff touching `worker/prompts/` or retrieval code (`worker/` ingestion/retrieval per ADR-0005) needs evidence in the PR that the eval gate passed: the `eval` CI check green on the PR head, or a `make eval` table in the body showing no gated metric (`classification_accuracy`, `recall_at_5`, `recall_at_1`) below `evals/baseline.json`. No such evidence: blocking. Fabricated numbers: blocking.
 
-**Exception while the gate does not exist.** The gate needs `evals/baseline.json` and a non-empty `evals/golden/`; both arrive with #30, which is still open. Until then `make eval` cannot run, and demanding its output blocks every PR that touches retrieval code — including the ones that build the thing the gate is meant to measure. So: **check first.** If `evals/baseline.json` is absent or `evals/golden/` contains no `*.jsonl`, the eval gate is unavailable and its absence is not a finding. You have `Read`, `Grep` and `Glob` — verify it rather than assuming either way.
+A prompt change invalidates every recorded completion (the replay key hashes the rendered prompt - ADR-0036), so a PR that edits `worker/prompts/*.md` without a corresponding `evals/fixtures/completions.json` diff will fail `eval` with `UnrecordedPrompt`. If the fixture diff is missing, say so as a blocking finding rather than waiting for CI.
 
-In that case the requirement is a statement, not a measurement: the PR must say plainly that the gate was unavailable and why. Fabricated recall@5 or accuracy numbers, or silence, are both still blocking — ADR-0023 §3 states the obligation this way ("or, if #30 has still not landed by then, say plainly in the PR body that the eval gate was unavailable and why"), and the review job's prompt is built from the diff alone (`review-agent.yml`, "Build review prompt"), so look for that statement in the diff's own comments and docs rather than expecting to see the PR description. This exception expires the moment #30 commits a baseline; nothing needs to change here when it does.
+`evals/baseline.json` may only be raised by a human. `pr-lint` enforces it (a PR modifying that file must carry `agent:human`); if an agent-labeled PR modifies it anyway, that is blocking here too.
 
 ## 6. Obvious injection, SSRF, path traversal — blocking
 

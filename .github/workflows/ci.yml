@@ -665,6 +665,100 @@ jobs:
             exit 1
           fi
 
+  # The eval gate (ADR-0036, REQUIREMENTS S4, ADR-0008 step 4): the golden
+  # set through the shipped chunker/embedder/classifier/retrieval against
+  # the seed corpus in a throwaway org, compared to evals/baseline.json with
+  # zero tolerance. Its own job rather than a step in `python` so a
+  # regression reads as "eval failed" in the checks list, and so it is a
+  # required check by name (.github/rulesets/main.json).
+  #
+  # Zero paid tokens by construction: the LLM is replayed from
+  # evals/fixtures/completions.json, and this job deliberately sets no
+  # LLM_PROVIDER and no provider credential - if the harness ever tried to
+  # reach a real provider here it would fail on the missing key, not spend.
+  # Not path-filtered: a path-filtered required check never reports on
+  # unrelated PRs and blocks them forever; it is cheap enough to always run.
+  eval:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: ghcr.io/jason-trentcyber/frontdesk-postgres@sha256:6b99f66e5de740b1e5cff5726a85e8d06e63d4100bcbdacd74378b22bdb19f83
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: frontdesk
+          # Throwaway CI values, plain strings - not secrets.
+          FRONTDESK_PASSWORD: frontdesk
+          FRONTDESK_APP_PASSWORD: frontdesk_app
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d frontdesk"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://frontdesk:***@localhost:5432/frontdesk
+      DATABASE_APP_URL: postgresql://frontdesk_app:***@localhost:5432/frontdesk
+      MIGRATE_DATABASE_URL: postgresql://frontdesk:***@localhost:5432/frontdesk
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install Node dependencies
+        run: |
+          pnpm --version
+          pnpm install --frozen-lockfile
+
+      # The harness inserts its own org and documents; it needs the schema,
+      # not `pnpm seed`.
+      - name: Migrate
+        run: pnpm --filter @frontdesk/db migrate
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
+
+      - name: Install Python dependencies
+        working-directory: worker
+        run: |
+          uv --version
+          uv sync --frozen
+
+      # Same cache key as the python job (worker/scripts/fetch_model.py's
+      # MODEL_REVISION) so the two jobs share one cached download.
+      - name: Cache embedding model
+        id: model-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: worker/models
+          key: bge-small-en-v1.5-5c38ec7c405ec4b44b94cc5a9bb96e735b38267a
+
+      - name: Fetch embedding model
+        if: steps.model-cache.outputs.cache-hit != 'true'
+        working-directory: worker
+        run: uv run python scripts/fetch_model.py
+
+      - name: Assert no LLM credentials in this job
+        run: |
+          if [ -n "${LLM_PROVIDER:-}" ] || [ -n "${OPENROUTER_API_KEY:-}" ] || [ -n "${AWS_ACCESS_KEY_ID:-}" ]; then
+            echo "::error::the eval job must run with no LLM provider or credential set" >&2
+            exit 1
+          fi
+
+      - name: Eval gate
+        run: make eval
+
   # ADR-0006's switch-proof, named as its own check (not just folded into
   # `python` above, even though that job's full suite already covers this
   # file too) so a reviewer sees "provider-parity" pass or fail directly in

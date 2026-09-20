@@ -41,6 +41,7 @@
           { "context": "docker" },
           { "context": "helm-lint" },
           { "context": "provider-parity" },
+          { "context": "eval" },
           { "context": "lighthouse" },
           { "context": "terraform-validate (infra/hetzner)" },
           { "context": "terraform-validate (infra/aws)" },

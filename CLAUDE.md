@@ -28,7 +28,7 @@ frontdesk is an AI-assisted request desk for small businesses, built in public a
 | `worker/` ingestion, retrieval | 0005 retrieval, 0023 worker runtime, 0025 ingestion trigger | bge-small, HNSW params, RRF; ONNX Runtime not torch; `asyncpg` + hand-written SQL, no Python ORM; tenant access only through `for_org()`, which mirrors `forOrg()` in `db/`; ingestion consumes `frontdesk_ingest`, embeds in batches of at most 32 (the size ADR-0023's 512Mi limit was measured at) |
 | `docs/contracts/` | 0004 queue, 0023 worker runtime, 0025 ingest contract | Language-neutral message shapes. `triage-message.schema.json` and `ingest-message.schema.json` are validated by BOTH `api/`'s and `worker/`'s test suites - the queue has no RLS, so these files are what keep a producer bug from becoming a cross-tenant one |
 | `worker/prompts/` | 0008 sdlc §7, 0005 | Every change runs the eval gate |
-| `evals/` | 0008 | Baseline only raised by a human commit |
+| `evals/` | 0008, 0036 | Replayed LLM fixtures, seed corpus, three zero-tolerance metrics; baseline only raised by an `agent:human` PR; prompt edits require a `--record` fixture diff |
 | `.github/` | 0008, 0011, 0014, 0029, 0034 | Provenance, review agent, gates; Dependabot exempt; deploy.yml joins the tailnet, namespace-scoped kubeconfig; `lighthouse` job is blocking, per-PR, accessibility only (0029); `pages.yml` publishes `docs/diagrams/` and is deliberately outside `ci.yml` - it gates nothing (0034) |
 | `compose.yaml` | 0028 loopback port bindings, 0004 queue, 0016 postgres image | Local dev only; never produces a shipped artifact. Every published port names an explicit bind address (`"127.0.0.1:5432:5432"`), never the short `"5432:5432"` form, which binds `0.0.0.0`. Off-host reachability is an ADR, not a compose edit. A host firewall is NOT a control here: Docker DNATs published ports through `FORWARD`, never `INPUT`, so a ufw rule reports success and enforces nothing (0028) |
 | `docs/adr/` | `docs/adr/README.md` | Never edit a decided ADR's decision |
@@ -54,7 +54,7 @@ uv run --project worker python -m worker
 - New behavior in `api/` or `worker/` ships with a test in the same PR. The review agent blocks otherwise.
 - No test may call OpenRouter or AWS. Use `FakeProvider` and the pgmq/LocalStack service containers.
 - Touching `worker/llm/` means `provider-parity` must stay green: identical normalized `Completion` across OpenRouter (recorded), Bedrock (botocore Stubber), Fake.
-- Touching prompts, retrieval, or `evals/` means `make eval` must not drop recall@5 or classification accuracy below `evals/baseline.json`.
+- Touching prompts, retrieval, or `evals/` means `make eval` must not drop classification accuracy, recall@5, or recall@1 below `evals/baseline.json` (ADR-0036). A prompt edit also needs a `make eval ARGS=--record` fixture diff in the PR.
 
 ## Things that always need a human (do not do these yourself)
 

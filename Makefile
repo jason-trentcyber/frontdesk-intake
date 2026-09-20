@@ -19,7 +19,7 @@ help:
 	@echo "  lint       eslint/prettier (pnpm) + ruff (uv)"
 	@echo "  typecheck  tsc (pnpm) + pyright (uv)"
 	@echo "  test       vitest (pnpm) + pytest (uv)"
-	@echo "  eval       evals/run.py against evals/golden, compared to baseline.json"
+	@echo "  eval       evals/run.py: golden set vs baseline.json (ARGS=--record / --no-gate)"
 	@echo "  bootstrap       install ingress-nginx/cert-manager/sealed-secrets/observability (#16)"
 	@echo "  bootstrap-rbac  create the frontdesk namespace + CI deploy RBAC, human-run once (#18)"
 	@echo ""
@@ -56,7 +56,7 @@ test:
 	cd worker && uv run pytest
 
 eval:
-	@echo "not implemented until #30"
+	cd worker && PYTHONPATH=.. uv run python -m evals.run $(ARGS)
 
 bootstrap:
 	KUBECONFIG=infra/hetzner/kubeconfig ./deploy/bootstrap/bootstrap.sh

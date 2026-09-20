@@ -65,6 +65,31 @@ jobs:
               }
             }
 
+            // --- Check 3: evals/baseline.json is a human-only file ---
+            // CODEOWNERS states the intent; GitHub's code-owner review
+            // requirement cannot be enabled on a single-maintainer repo, so
+            // the enforceable proxy is the provenance label: the human
+            // opening the PR is the human raising the baseline. Reasoning in
+            // docs/AI-GOVERNANCE.md -> Enforcement and ADR-0036. Creating the
+            // file is exempt: the first baseline is the measured value of
+            // whatever the harness PR ships, not a number anyone chose.
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100,
+            });
+            const touchesBaseline = files.some(
+              (f) => f.filename === 'evals/baseline.json' && f.status !== 'added'
+            );
+            if (touchesBaseline && !labelNames.includes('agent:human')) {
+              errors.push(
+                'This PR modifies evals/baseline.json, which only a human may raise. ' +
+                  'It must carry the "agent:human" label (a human is the PR author), ' +
+                  'or drop the baseline change and let a human land it separately.'
+              );
+            }
+
             if (errors.length > 0) {
               core.setFailed(errors.join('\n'));
             }
