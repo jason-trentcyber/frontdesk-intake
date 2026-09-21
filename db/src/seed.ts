@@ -2,11 +2,11 @@ import { createHash } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { createDb, type Db } from "./client.js";
 import { logger } from "./logger.js";
 import * as schema from "./schema/index.js";
-import type { OrgSettings } from "./settings.js";
+import { type OrgSettings, orgSettingsSchema } from "./settings.js";
 
 const SEED_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../seed");
 const SEED_OWNER_EMAIL = process.env.SEED_OWNER_EMAIL ?? "owner@example.com";
@@ -25,41 +25,22 @@ interface OrgSeed {
   slug: string;
   name: string;
   isDemo: boolean;
-  settings: OrgSettings;
 }
 
+// Each org's settings (categories, lanes, categoryDescriptions, ...) live
+// in db/seed/<slug>/settings.json beside its documents, validated by
+// orgSettingsSchema at load. One file so the eval harness (evals/run.py)
+// reads the same categories and descriptions the demo org is seeded with
+// instead of mirroring them (#152).
 const ORGS: OrgSeed[] = [
-  {
-    slug: "bright-smile-dental",
-    name: "Bright Smile Dental",
-    isDemo: true,
-    settings: {
-      categories: ["scheduling", "billing", "insurance", "clinical-question", "other"],
-      lanes: {
-        scheduling: "front-desk",
-        billing: "billing",
-        insurance: "billing",
-        "clinical-question": "clinical",
-        other: "front-desk",
-      },
-    },
-  },
-  {
-    slug: "harbor-legal",
-    name: "Harbor Legal",
-    isDemo: false,
-    settings: {
-      categories: ["scheduling", "billing", "intake", "case-question", "other"],
-      lanes: {
-        scheduling: "front-desk",
-        billing: "billing",
-        intake: "intake",
-        "case-question": "attorney",
-        other: "front-desk",
-      },
-    },
-  },
+  { slug: "bright-smile-dental", name: "Bright Smile Dental", isDemo: true },
+  { slug: "harbor-legal", name: "Harbor Legal", isDemo: false },
 ];
+
+async function loadOrgSettings(orgSlug: string): Promise<OrgSettings> {
+  const file = path.join(SEED_DIR, orgSlug, "settings.json");
+  return orgSettingsSchema.parse(JSON.parse(await readFile(file, "utf8")));
+}
 
 interface DemoRequestSeed {
   trackingToken: string;
@@ -165,14 +146,18 @@ const DEMO_REQUESTS: DemoRequestSeed[] = [
   },
 ];
 
-async function upsertOrg(db: Db, org: OrgSeed): Promise<{ id: string; inserted: boolean }> {
+async function upsertOrg(
+  db: Db,
+  org: OrgSeed,
+  settings: OrgSettings,
+): Promise<{ id: string; inserted: boolean }> {
   const inserted = await db
     .insert(schema.orgs)
     .values({
       slug: org.slug,
       name: org.name,
       isDemo: org.isDemo,
-      settings: org.settings,
+      settings,
     })
     .onConflictDoNothing({ target: schema.orgs.slug })
     .returning({ id: schema.orgs.id });
@@ -188,6 +173,26 @@ async function upsertOrg(db: Db, org: OrgSeed): Promise<{ id: string; inserted: 
     throw new Error(`org ${org.slug} missing immediately after a no-op insert`);
   }
   return { id: existing.id, inserted: false };
+}
+
+// Additive backfill of a settings key introduced after the org row was
+// first seeded (#152: categoryDescriptions). Still "never overwrites"
+// (ADR-0018): only an org whose settings lack the key gets it, so an
+// operator who has since edited the row's descriptions keeps theirs.
+// Returns true when a row was changed.
+async function backfillSettingsKey(
+  db: Db,
+  orgId: string,
+  key: keyof OrgSettings,
+  value: unknown,
+): Promise<boolean> {
+  if (value === undefined) return false;
+  const updated = await db
+    .update(schema.orgs)
+    .set({ settings: sql`${schema.orgs.settings} || ${JSON.stringify({ [key]: value })}::jsonb` })
+    .where(and(eq(schema.orgs.id, orgId), sql`not (${schema.orgs.settings} ? ${key})`))
+    .returning({ id: schema.orgs.id });
+  return updated.length > 0;
 }
 
 async function upsertOwner(db: Db, orgId: string, orgSlug: string): Promise<boolean> {
@@ -234,7 +239,12 @@ async function upsertDocuments(db: Db, orgId: string, orgSlug: string): Promise<
   return created;
 }
 
-async function upsertDemoRequests(db: Db, orgId: string, org: OrgSeed): Promise<number> {
+async function upsertDemoRequests(
+  db: Db,
+  orgId: string,
+  org: OrgSeed,
+  settings: OrgSettings,
+): Promise<number> {
   let created = 0;
   for (const seed of DEMO_REQUESTS) {
     const inserted = await db
@@ -251,7 +261,7 @@ async function upsertDemoRequests(db: Db, orgId: string, org: OrgSeed): Promise<
         category: seed.category,
         urgency: seed.urgency,
         summary: seed.summary,
-        lane: org.settings.lanes[seed.category],
+        lane: settings.lanes[seed.category],
         replyText: seed.approved ? seed.draftBody : null,
         resolvedAt: seed.approved ? new Date() : null,
       })
@@ -302,21 +312,34 @@ export interface SeedCounts {
   owners: number;
   documents: number;
   requests: number;
+  settingsBackfilled: number;
 }
 
 /** Idempotent: create-if-missing by natural key, never overwrites (ADR-0018). */
 export async function seedDatabase(db: Db): Promise<SeedCounts> {
-  const counts: SeedCounts = { orgs: 0, owners: 0, documents: 0, requests: 0 };
+  const counts: SeedCounts = {
+    orgs: 0,
+    owners: 0,
+    documents: 0,
+    requests: 0,
+    settingsBackfilled: 0,
+  };
 
   for (const org of ORGS) {
-    const { id: orgId, inserted: orgInserted } = await upsertOrg(db, org);
+    const settings = await loadOrgSettings(org.slug);
+    const { id: orgId, inserted: orgInserted } = await upsertOrg(db, org, settings);
     if (orgInserted) counts.orgs += 1;
+    else if (
+      await backfillSettingsKey(db, orgId, "categoryDescriptions", settings.categoryDescriptions)
+    ) {
+      counts.settingsBackfilled += 1;
+    }
 
     if (await upsertOwner(db, orgId, org.slug)) counts.owners += 1;
     counts.documents += await upsertDocuments(db, orgId, org.slug);
 
     if (org.isDemo) {
-      counts.requests += await upsertDemoRequests(db, orgId, org);
+      counts.requests += await upsertDemoRequests(db, orgId, org, settings);
     }
   }
 

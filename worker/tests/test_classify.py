@@ -7,6 +7,7 @@ from frontdesk_worker.triage.classify import (
     DEFAULT_CATEGORY,
     DEFAULT_URGENCY,
     classify_and_route,
+    render_category_definitions,
 )
 from llm import Completion, Message
 from llm.fake import FakeProvider
@@ -82,6 +83,49 @@ async def test_fenced_json_response_is_parsed(fenced: str) -> None:
     assert result.category == "billing"
     assert result.urgency == "high"
     assert result.summary == "wants a refund"
+
+
+def test_render_category_definitions_one_line_per_category_in_org_order() -> None:
+    # #152: the org's descriptions become the definition block the model
+    # reads; a category with no description is still listed (bare) so the
+    # label set stays complete; a description for an unconfigured category
+    # is ignored.
+    rendered = render_category_definitions(
+        ["billing", "scheduling", "other"],
+        {
+            "scheduling": "Booking or moving an appointment.",
+            "billing": "  Invoices. ",
+            "ghost": "x",
+        },
+    )
+
+    assert (
+        rendered == "- billing: Invoices.\n- scheduling: Booking or moving an appointment.\n- other"
+    )
+
+
+def test_render_category_definitions_without_descriptions_or_categories() -> None:
+    assert render_category_definitions(["a", "b"], None) == "- a\n- b"
+    assert render_category_definitions([], None) == f"- {DEFAULT_CATEGORY}"
+
+
+async def test_descriptions_are_rendered_into_the_prompt() -> None:
+    provider = ScriptedProvider(
+        text=json.dumps({"category": "billing", "urgency": "normal", "summary": "s"})
+    )
+
+    await classify_and_route(
+        provider,
+        _CATEGORIES,
+        _LANES,
+        "subject",
+        "body",
+        category_descriptions={"billing": "Invoices and payments."},
+    )
+
+    prompt = provider.calls[0][0].content
+    assert "- billing: Invoices and payments." in prompt
+    assert "- scheduling\n" in prompt
 
 
 async def test_route_assigns_lane_from_category() -> None:

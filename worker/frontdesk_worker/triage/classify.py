@@ -51,15 +51,30 @@ class Classification:
     output_tokens: int
 
 
+def render_category_definitions(categories: list[str], descriptions: dict[str, str] | None) -> str:
+    """One `- <category>: <description>` line per configured category, in
+    the org's order. A category without a description (orgs seeded before
+    #152, or a description an operator deleted) is listed bare so the
+    label set the model may answer from is always complete."""
+    names = categories or [DEFAULT_CATEGORY]
+    lines = []
+    for name in names:
+        text = (descriptions or {}).get(name, "").strip()
+        lines.append(f"- {name}: {text}" if text else f"- {name}")
+    return "\n".join(lines)
+
+
 async def classify_and_route(
     provider: LLMProvider,
     categories: list[str],
     lanes: dict[str, str],
     subject: str,
     body: str,
+    category_descriptions: dict[str, str] | None = None,
 ) -> Classification:
     prompt = CLASSIFY_TEMPLATE.format(
         categories=", ".join(categories) if categories else DEFAULT_CATEGORY,
+        category_definitions=render_category_definitions(categories, category_descriptions),
         subject=subject,
         body=body,
     )

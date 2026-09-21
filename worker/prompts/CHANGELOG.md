@@ -8,6 +8,24 @@ a `make eval ARGS=--record` re-record (human-run, ~$0.01) and its fixture diff.
 
 `drafts.prompt_version` records which entry below produced a given draft.
 
+## triage-v2 (2026-09-21, #152)
+
+`classify.md` only. Found by the live demo: "bad toothache, do I need to come
+in today?" classified `other` / `normal`. The v1 prompt handed the model the
+bare label list and the word "urgency" with no definition of either.
+
+- **Category definitions.** A new `{category_definitions}` block renders one
+  `- <category>: <description>` line per configured category from the org's
+  `settings.categoryDescriptions` (`db/src/settings.ts`; seeded from
+  `db/seed/<org>/settings.json`). Categories are per-org, so the definitions
+  live in org settings next to the `lanes` map, not in this file. A category
+  without a description is listed bare; `{categories}` is unchanged.
+- **Urgency rubric.** `high` / `normal` / `low` are now defined in the prompt
+  (pain, injury, bleeding, swelling, safety, or "do I need to be seen today"
+  = high). v1 said only "how time-sensitive the request is".
+- Fixtures re-recorded (`make eval ARGS=--record`); golden set extended with
+  high-urgency clinical examples (`evals/golden/dental.jsonl`, dental-021+).
+
 ## triage-v1 (2026-09-13, #25)
 
 Initial classify + draft prompts for the triage pipeline

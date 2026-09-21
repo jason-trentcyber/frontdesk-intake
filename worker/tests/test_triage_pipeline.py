@@ -13,6 +13,7 @@ from frontdesk_worker.db import for_org
 from frontdesk_worker.ingestion.embedder import Embedder, ModelNotFetched
 from frontdesk_worker.pipeline import RequestNotFound, run_triage_pipeline
 from frontdesk_worker.settings import Settings
+from frontdesk_worker.triage.prompts import PROMPT_VERSION
 from llm import Completion, Message
 
 try:
@@ -181,7 +182,7 @@ async def test_happy_path_with_relevant_chunks_writes_drafted_status(
             request_id,
         )
         assert draft is not None
-        assert draft["prompt_version"] == "triage-v1"
+        assert draft["prompt_version"] == PROMPT_VERSION
         assert draft["model"] == "haiku"
         assert draft["tokens_in"] > 0
         assert draft["tokens_out"] > 0

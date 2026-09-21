@@ -6,8 +6,11 @@ _CHANGELOG_PATH = Path(__file__).resolve().parents[1] / "prompts" / "CHANGELOG.m
 
 
 def test_classify_template_has_the_expected_placeholders() -> None:
-    rendered = CLASSIFY_TEMPLATE.format(categories="a, b", subject="s", body="b")
+    rendered = CLASSIFY_TEMPLATE.format(
+        categories="a, b", category_definitions="- a: first\n- b: second", subject="s", body="b"
+    )
     assert "a, b" in rendered
+    assert "- a: first\n- b: second" in rendered
     assert "s" in rendered
 
 
