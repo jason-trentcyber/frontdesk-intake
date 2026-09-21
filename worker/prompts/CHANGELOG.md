@@ -23,8 +23,25 @@ bare label list and the word "urgency" with no definition of either.
 - **Urgency rubric.** `high` / `normal` / `low` are now defined in the prompt
   (pain, injury, bleeding, swelling, safety, or "do I need to be seen today"
   = high). v1 said only "how time-sensitive the request is".
-- Fixtures re-recorded (`make eval ARGS=--record`); golden set extended with
-  high-urgency clinical examples (`evals/golden/dental.jsonl`, dental-021+).
+- Fixtures re-recorded (`make eval ARGS=--record`, 24 completions against
+  `anthropic/claude-haiku-4.5` via OpenRouter, $0.017); golden set extended
+  with high-urgency clinical examples (`evals/golden/dental.jsonl`,
+  dental-021..024 - the live toothache verbatim plus three neighbours;
+  `high` examples go from 1 to 4).
+- `make eval` on this head, replayed from the re-recorded fixtures, against
+  the unchanged `evals/baseline.json`:
+
+  | metric                  | value | baseline | status        |
+  | ----------------------- | ----- | -------- | ------------- |
+  | classification_accuracy | 1.000 | 1.000    | ok            |
+  | recall_at_5             | 1.000 | 1.000    | ok            |
+  | recall_at_1             | 0.900 | 0.889    | ok            |
+  | urgency_accuracy        | 0.833 | -        | reported only |
+
+  All four new high-urgency clinical examples classify `clinical-question` /
+  `high`. The four urgency misses (dental-002, -003, -014, -018) are
+  arguable labels on the original set, not rubric failures; urgency stays
+  reported-only until it is promoted with a reviewed set (#152 follow-up).
 
 ## triage-v1 (2026-09-13, #25)
 
