@@ -43,16 +43,16 @@ Six guardrails, all visible in this repo. Each links to the moment it did its jo
 
 ## Cost
 
-What one triaged request costs, and where the LLM would be cheaper to own than to rent. Per-request figure is measured, not estimated ([ADR-0023 §5](docs/adr/0023-worker-runtime-shape.md): classify ≈ 600 in / 30 out, draft ≈ 2,800 in / 350 out, Claude Haiku 4.5 at $1 / $5 per million tokens = **$0.0053**). Hetzner prices are list, ex-VAT, read from their price API on 2026-09-20; Bedrock's Haiku 4.5 list price equals Anthropic's.
+What one triaged request costs, and where the LLM would be cheaper to own than to rent. Per-request figure is measured, not estimated ([ADR-0023 §5](docs/adr/0023-worker-runtime-shape.md): classify ≈ 600 in / 30 out, draft ≈ 2,800 in / 350 out, Claude Haiku 4.5 at $1 / $5 per million tokens = **$0.0053**). Hetzner prices are USD list as shown to a US account on 2026-09-20, before tax; Bedrock's Haiku 4.5 list price equals Anthropic's. The GPU row is a reference floor (cheapest dedicated GPU with a public list price), not a hosting plan.
 
 | Option | Fixed / month | Per request | 50 req/mo (demo) | 500 req/mo | Break-even vs. API |
 |---|---|---|---|---|---|
-| **OpenRouter → Haiku 4.5** (deployed) | €7.10 node | $0.0053 | $0.27 | $2.65 | — |
-| **Bedrock → Haiku 4.5** | €7.10 node; +$73 only if the cluster also moves to EKS | $0.0053 | $0.27 | $2.65 | same tokens, same price; you pay for the AWS account boundary, not the model |
-| **Hetzner GEX45** (RTX PRO 4000, 24 GB) + open-weights model | €214 (+€209 setup) | ≈ $0 | €214 | €214 | ≈ **47,000 req/mo** |
-| **Hetzner cx53** (16 vCPU / 32 GB) + Ollama on CPU | €35 | ≈ $0 | €35 | €35 | ≈ **7,700 req/mo**, at CPU latency (tens of seconds per draft) |
+| **OpenRouter → Haiku 4.5** (deployed) | $6.49 node | $0.0053 | $0.27 | $2.65 | — |
+| **Bedrock → Haiku 4.5** | $6.49 node; +$73 only if the cluster also moves to EKS | $0.0053 | $0.27 | $2.65 | same tokens, same price; you pay for the AWS account boundary, not the model |
+| **Hetzner GEX45** (RTX PRO 4000, 24 GB) + open-weights model | $249 (+$249 setup) | ≈ $0 | $249 | $249 | ≈ **47,000 req/mo** |
+| **Hetzner cx53** (16 vCPU / 32 GB) + Ollama on CPU | $34.99 | ≈ $0 | $34.99 | $34.99 | ≈ **6,600 req/mo**, at CPU latency (tens of seconds per draft) |
 
-Reading it: below roughly 8,000 requests a month, renting tokens is cheaper than the smallest box that can run a model, and the OpenRouter key is hard-capped at $10 (≈ 1,900 requests) so a bug cannot exceed that. The GPU line is the cost of *never sending a customer's text to a vendor* — a data-residency decision, not a cost one, until volume is ~50× the demo. The Ollama adapter is [#38](https://github.com/jason-trentcyber/frontdesk-intake/issues/38); the interface it would implement is the same one Bedrock already does.
+Reading it: below roughly 6,600 requests a month, renting tokens is cheaper than the smallest box that can run a model, and the OpenRouter key is hard-capped at $10 (≈ 1,900 requests) so a bug cannot exceed that. The GPU line is the cost of *never sending a customer's text to a vendor* — a data-residency decision, not a cost one, until volume is nearly 1,000× the demo. The Ollama adapter is [#38](https://github.com/jason-trentcyber/frontdesk-intake/issues/38); the interface it would implement is the same one Bedrock already does.
 
 ## Switch to Bedrock
 
