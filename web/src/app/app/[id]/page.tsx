@@ -67,6 +67,27 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
         {request.requesterEmail ? ` (${request.requesterEmail})` : ""}
       </p>
 
+      {/* #153: a high-urgency request that is still open gets a visible
+          stop sign above the fold. The pipeline does not change status
+          on urgency (the requester sees "In review" for drafted and
+          needs_human alike, so status would not protect anyone); what
+          staff need is to be told, before the one-click "Approve as
+          drafted" button below, that this one is worth reading. Hidden
+          once resolved - the action history says what happened. */}
+      {!isResolved && request.urgency === "high" && (
+        <div
+          role="status"
+          className="mt-4 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900"
+        >
+          <p className="font-medium">High urgency - read before approving.</p>
+          <p className="mt-1">
+            The classifier flagged this as time-sensitive. Check the draft against the original
+            message; if the right answer is &ldquo;call us now&rdquo; or &ldquo;go to urgent
+            care&rdquo;, edit the reply or handle it directly instead of approving as drafted.
+          </p>
+        </div>
+      )}
+
       {/* F11: original text. */}
       <section aria-labelledby="original-heading" className="card mt-6">
         <h2 id="original-heading" className="text-base">
