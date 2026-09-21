@@ -363,6 +363,52 @@ async def test_persistent_invalid_citation_marks_needs_human(
 
 @requires_postgres
 @requires_model
+@pytest.mark.parametrize(
+    ("category_descriptions", "expected_line"),
+    [
+        # #152: the org's descriptions reach the classify prompt through
+        # run_triage_pipeline's settings extraction, not just classify.py.
+        ({"billing": "Invoices and payments."}, "- billing: Invoices and payments."),
+        # A malformed value (not an object) is dropped, not crashed on - the
+        # label list is still rendered bare so triage keeps running.
+        ("not an object", "- billing\n"),
+        (["billing"], "- billing\n"),
+    ],
+    ids=["dict", "string", "list"],
+)
+async def test_category_descriptions_from_org_settings_reach_the_classify_prompt(
+    app_pool: asyncpg.Pool,
+    org_factory: OrgFactory,
+    monkeypatch: pytest.MonkeyPatch,
+    category_descriptions: object,
+    expected_line: str,
+) -> None:
+    assert _embedder is not None
+    org_id = await org_factory.make_org(
+        settings={**_ORG_SETTINGS, "categoryDescriptions": category_descriptions}
+    )
+    request_id = await org_factory.make_request(org_id, subject="Why was I charged twice?")
+
+    provider = _RecordingProvider()
+
+    async def fake_resolve_provider(*args: object, **kwargs: object) -> _RecordingProvider:
+        return provider
+
+    monkeypatch.setattr(pipeline_module, "resolve_provider", fake_resolve_provider)
+
+    async with for_org(app_pool, org_id) as conn:
+        await run_triage_pipeline(conn, app_pool, _embedder, _settings(), org_id, request_id)
+
+        request = await conn.fetchrow("select status from requests where id = $1", request_id)
+        assert request is not None
+        assert request["status"] in ("drafted", "needs_human")
+
+    classify_prompt = provider.calls[0]
+    assert expected_line in classify_prompt
+
+
+@requires_postgres
+@requires_model
 async def test_draft_written_for_org_a_is_invisible_under_org_b(
     app_pool: asyncpg.Pool, org_factory: OrgFactory
 ) -> None:
