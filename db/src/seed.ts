@@ -108,7 +108,13 @@ const DEMO_REQUESTS: DemoRequestSeed[] = [
     requesterEmail: "dana.ferreira@example.com",
     subject: "Bad toothache, not sure if this is an emergency",
     body: "I've had a throbbing pain in my lower left molar since last night and it's getting worse. No swelling that I can see. Is this something I need to be seen for today?",
-    status: "needs_human",
+    // `drafted`, not `needs_human`: this is what the live pipeline
+    // produces for this input (retrieval hits the emergency-care seed
+    // doc, the citations validate). Urgency does not change status -
+    // it changes where the row sits in the staff queue and what the
+    // detail page says above the approve button (#153, ADR-0037). A
+    // seed row claiming `needs_human` here misrepresented the product.
+    status: "drafted",
     category: "clinical-question",
     urgency: "high",
     summary: "Patient reports worsening tooth pain, asking whether same-day care is needed.",

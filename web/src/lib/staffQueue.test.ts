@@ -166,5 +166,65 @@ describe.skipIf(!hasEnv)(
       expect(demoOptions.lanes.length).toBeGreaterThan(0);
       expect(demoOptions.statuses).toContain("needs_human");
     });
+
+    it("#153: needs_human and high-urgency rows outrank newer, lower-stakes rows", async () => {
+      // Inserted oldest-first so that a created_at-DESC-only sort would
+      // put them in exactly the WRONG order (normal drafted newest at the
+      // top, needs_human oldest at the bottom). The seed rows and any
+      // leftovers from other tests are also in this queue; the test only
+      // asserts the relative order of its own four rows, and that the
+      // resolved high-urgency one does not outrank live work.
+      const tag = randomUUID();
+      const insertOne = async (values: {
+        status: "drafted" | "needs_human" | "approved";
+        urgency: "normal" | "high";
+      }) => {
+        const [row] = await ownerDb
+          .insert(requests)
+          .values({
+            orgId: demoOrgId,
+            source: "form",
+            subject: `staff-queue-rank-${values.status}-${values.urgency}-${tag}`,
+            body: "x",
+            trackingToken: `tok-${randomUUID()}`,
+            status: values.status,
+            urgency: values.urgency,
+          })
+          .returning();
+        if (!row) throw new Error("failed to insert test request");
+        createdRequestIds.push(row.id);
+        return row;
+      };
+
+      const needsHuman = await insertOne({ status: "needs_human", urgency: "normal" });
+      const highDrafted = await insertOne({ status: "drafted", urgency: "high" });
+      const highApproved = await insertOne({ status: "approved", urgency: "high" });
+      const normalDrafted = await insertOne({ status: "drafted", urgency: "normal" });
+      // Four inserts in one transaction-less burst can share a created_at
+      // to the microsecond; space them a minute apart, oldest first, so
+      // the age order is unambiguous and a created_at-only sort would
+      // return them in exactly the reverse of the asserted order.
+      const ages = [needsHuman, highDrafted, highApproved, normalDrafted];
+      for (const [i, row] of ages.entries()) {
+        await ownerDb.execute(
+          sql`update requests set created_at = now() - make_interval(secs => ${(ages.length - i) * 60}) where id = ${row.id}`,
+        );
+      }
+
+      const queue = await getStaffQueue(appDb, demoOrgId);
+      const position = (id: string) => queue.findIndex((r) => r.id === id);
+      for (const row of ages) {
+        expect(position(row.id)).toBeGreaterThanOrEqual(0);
+      }
+
+      // needs_human first, then the live high-urgency draft, then the
+      // two rank-2 rows in age order (newest first) - the resolved
+      // high-urgency row is newer than the needs_human and high-drafted
+      // rows but must not outrank either.
+      expect(position(needsHuman.id)).toBeLessThan(position(highDrafted.id));
+      expect(position(highDrafted.id)).toBeLessThan(position(normalDrafted.id));
+      expect(position(highDrafted.id)).toBeLessThan(position(highApproved.id));
+      expect(position(normalDrafted.id)).toBeLessThan(position(highApproved.id));
+    });
   },
 );
