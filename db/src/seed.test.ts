@@ -19,7 +19,13 @@ describe.skipIf(!url)(
       const second = await seedDatabase(db);
 
       // Second run should find everything already present: nothing new.
-      expect(second).toEqual({ orgs: 0, owners: 0, documents: 0, requests: 0 });
+      expect(second).toEqual({
+        orgs: 0,
+        owners: 0,
+        documents: 0,
+        requests: 0,
+        settingsBackfilled: 0,
+      });
       // Sanity: the first run (in this process) did create something, or
       // an earlier `pnpm seed` already had - either way the DB is seeded.
       expect(first.orgs + first.owners + first.documents + first.requests).toBeGreaterThanOrEqual(

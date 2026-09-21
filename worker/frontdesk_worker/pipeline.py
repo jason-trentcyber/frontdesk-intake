@@ -162,12 +162,23 @@ async def run_triage_pipeline(
     categories: list[str] = list(categories_raw) if isinstance(categories_raw, list) else []
     lanes_raw = org_settings.get("lanes")
     lanes: dict[str, str] = dict(lanes_raw) if isinstance(lanes_raw, dict) else {}
+    descriptions_raw = org_settings.get("categoryDescriptions")
+    category_descriptions: dict[str, str] | None = (
+        {str(k): str(v) for k, v in descriptions_raw.items()}
+        if isinstance(descriptions_raw, dict)
+        else None
+    )
     floor = similarity_floor(org_settings)
 
     provider = await resolve_provider(pool, settings, org_id, int(org["daily_token_budget"]))
 
     classification = await classify_and_route(
-        provider, categories, lanes, request["subject"], request["body"]
+        provider,
+        categories,
+        lanes,
+        request["subject"],
+        request["body"],
+        category_descriptions=category_descriptions,
     )
     tokens_in = classification.input_tokens
     tokens_out = classification.output_tokens

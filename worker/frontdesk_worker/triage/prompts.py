@@ -8,7 +8,7 @@ every draft this pipeline writes records it in drafts.prompt_version.
 
 from pathlib import Path
 
-PROMPT_VERSION = "triage-v1"
+PROMPT_VERSION = "triage-v2"
 
 # worker/frontdesk_worker/triage/prompts.py -> worker root is two parents
 # up, same pattern as contracts.py's docs/contracts/ lookup.

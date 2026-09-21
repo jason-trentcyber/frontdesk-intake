@@ -1,0 +1,17 @@
+{
+  "categories": ["scheduling", "billing", "insurance", "clinical-question", "other"],
+  "lanes": {
+    "scheduling": "front-desk",
+    "billing": "billing",
+    "insurance": "billing",
+    "clinical-question": "clinical",
+    "other": "front-desk"
+  },
+  "categoryDescriptions": {
+    "scheduling": "Booking, moving, or cancelling an appointment; asking when appointments are available or how long a visit takes.",
+    "billing": "Charges, invoices, payments, payment plans, and what a procedure costs with or without insurance.",
+    "insurance": "Which insurance plans are accepted, what a plan covers, and what to bring so benefits can be verified.",
+    "clinical-question": "Anything about symptoms, pain, injury, a procedure, or aftercare - including asking whether something needs to be seen. A message that describes a symptom is a clinical question even when it also asks about coming in.",
+    "other": "Anything that fits none of the above: office logistics such as parking or directions, records requests, vendors, job applicants, general questions."
+  }
+}

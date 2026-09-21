@@ -1,0 +1,17 @@
+{
+  "categories": ["scheduling", "billing", "intake", "case-question", "other"],
+  "lanes": {
+    "scheduling": "front-desk",
+    "billing": "billing",
+    "intake": "intake",
+    "case-question": "attorney",
+    "other": "front-desk"
+  },
+  "categoryDescriptions": {
+    "scheduling": "Booking, moving, or cancelling a consultation or meeting; asking about availability.",
+    "billing": "Invoices, retainers, payments, fee questions, and payment arrangements.",
+    "intake": "A prospective client describing a new matter and asking whether the firm can take it, or what the intake process involves.",
+    "case-question": "A question from an existing client about their open matter: status, next steps, documents, deadlines, or advice about it.",
+    "other": "Anything that fits none of the above: office logistics, records requests, vendors, job applicants, general questions."
+  }
+}

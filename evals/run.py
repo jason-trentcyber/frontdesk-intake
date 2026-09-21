@@ -59,17 +59,17 @@ FIXTURES_PATH = EVALS_DIR / "fixtures" / "completions.json"
 BASELINE_PATH = EVALS_DIR / "baseline.json"
 SEED_DIR = REPO_ROOT / "db" / "seed" / "bright-smile-dental"
 
-# Mirrors the bright-smile-dental org in db/src/seed.ts. The golden set is
-# validated against this list at load time, so a category drift between the
-# two files is a loud failure here, not a silent 0% accuracy.
-CATEGORIES = ["scheduling", "billing", "insurance", "clinical-question", "other"]
-LANES = {
-    "scheduling": "front-desk",
-    "billing": "billing",
-    "insurance": "billing",
-    "clinical-question": "clinical",
-    "other": "front-desk",
-}
+# The demo org's settings - categories, lanes and the per-category
+# descriptions the classify prompt renders (#152) - read from the same
+# file db/src/seed.ts seeds it from, so the gate scores the shipped
+# configuration and cannot drift from it. The golden set is validated
+# against CATEGORIES at load time, so a label the org does not configure is
+# a loud failure here, not a silent 0% accuracy.
+SETTINGS_PATH = SEED_DIR / "settings.json"
+_SETTINGS: dict[str, object] = json.loads(SETTINGS_PATH.read_text())
+CATEGORIES: list[str] = list(_SETTINGS["categories"])  # type: ignore[arg-type]
+LANES: dict[str, str] = dict(_SETTINGS["lanes"])  # type: ignore[arg-type]
+CATEGORY_DESCRIPTIONS: dict[str, str] = dict(_SETTINGS.get("categoryDescriptions", {}))  # type: ignore[arg-type]
 URGENCIES = {"low", "normal", "high"}
 
 GATED_METRICS = ("classification_accuracy", "recall_at_5", "recall_at_1")
@@ -321,7 +321,12 @@ async def evaluate(
     async with for_org(app_pool, org_id) as conn:
         for ex in examples:
             classification = await classify_and_route(
-                provider, CATEGORIES, LANES, ex.subject, ex.body
+                provider,
+                CATEGORIES,
+                LANES,
+                ex.subject,
+                ex.body,
+                category_descriptions=CATEGORY_DESCRIPTIONS,
             )
             query_text = f"{ex.subject}\n\n{ex.body}"
             vector = embedder.embed_batch([query_text])[0]
@@ -450,7 +455,7 @@ async def main_async(args: argparse.Namespace) -> int:
             "insert into orgs (slug, name, daily_token_budget, settings) "
             "values ($1, $1, 1000000, $2::jsonb) returning id",
             slug,
-            json.dumps({"categories": CATEGORIES, "lanes": LANES}),
+            json.dumps(_SETTINGS),
         )
         assert row is not None
         org_id = str(row["id"])

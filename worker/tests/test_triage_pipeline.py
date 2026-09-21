@@ -13,6 +13,7 @@ from frontdesk_worker.db import for_org
 from frontdesk_worker.ingestion.embedder import Embedder, ModelNotFetched
 from frontdesk_worker.pipeline import RequestNotFound, run_triage_pipeline
 from frontdesk_worker.settings import Settings
+from frontdesk_worker.triage.prompts import PROMPT_VERSION
 from llm import Completion, Message
 
 try:
@@ -181,7 +182,7 @@ async def test_happy_path_with_relevant_chunks_writes_drafted_status(
             request_id,
         )
         assert draft is not None
-        assert draft["prompt_version"] == "triage-v1"
+        assert draft["prompt_version"] == PROMPT_VERSION
         assert draft["model"] == "haiku"
         assert draft["tokens_in"] > 0
         assert draft["tokens_out"] > 0
@@ -358,6 +359,52 @@ async def test_persistent_invalid_citation_marks_needs_human(
         assert len(provider.calls) == 3
         assert draft["tokens_in"] == 30
         assert draft["tokens_out"] == 15
+
+
+@requires_postgres
+@requires_model
+@pytest.mark.parametrize(
+    ("category_descriptions", "expected_line"),
+    [
+        # #152: the org's descriptions reach the classify prompt through
+        # run_triage_pipeline's settings extraction, not just classify.py.
+        ({"billing": "Invoices and payments."}, "- billing: Invoices and payments."),
+        # A malformed value (not an object) is dropped, not crashed on - the
+        # label list is still rendered bare so triage keeps running.
+        ("not an object", "- billing\n"),
+        (["billing"], "- billing\n"),
+    ],
+    ids=["dict", "string", "list"],
+)
+async def test_category_descriptions_from_org_settings_reach_the_classify_prompt(
+    app_pool: asyncpg.Pool,
+    org_factory: OrgFactory,
+    monkeypatch: pytest.MonkeyPatch,
+    category_descriptions: object,
+    expected_line: str,
+) -> None:
+    assert _embedder is not None
+    org_id = await org_factory.make_org(
+        settings={**_ORG_SETTINGS, "categoryDescriptions": category_descriptions}
+    )
+    request_id = await org_factory.make_request(org_id, subject="Why was I charged twice?")
+
+    provider = _RecordingProvider()
+
+    async def fake_resolve_provider(*args: object, **kwargs: object) -> _RecordingProvider:
+        return provider
+
+    monkeypatch.setattr(pipeline_module, "resolve_provider", fake_resolve_provider)
+
+    async with for_org(app_pool, org_id) as conn:
+        await run_triage_pipeline(conn, app_pool, _embedder, _settings(), org_id, request_id)
+
+        request = await conn.fetchrow("select status from requests where id = $1", request_id)
+        assert request is not None
+        assert request["status"] in ("drafted", "needs_human")
+
+    classify_prompt = provider.calls[0]
+    assert expected_line in classify_prompt
 
 
 @requires_postgres
