@@ -60,7 +60,7 @@ jobs:
           echo "tag=${PG_MINOR}-pgvector${PGVECTOR_VERSION}-pgmq${PGMQ_VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Buildx
-        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       # load: true (not push) so `docker run` below can see it - buildx
       # doesn't put the result in the local daemon otherwise.
@@ -141,7 +141,7 @@ jobs:
           echo "tag=${PG_MINOR}-pgvector${PGVECTOR_VERSION}-pgmq${PGMQ_VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Buildx
-        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       # Version tag = content (ADR-0016): refuse to overwrite one that
       # already exists. `imagetools inspect` succeeding means the tag is
