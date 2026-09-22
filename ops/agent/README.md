@@ -94,10 +94,25 @@ collector and read the output - it has no unit tests by decision
    curl -s http://127.0.0.1:9090/api/v1/rules | grep -o '"name":"[A-Za-z]*"'   # four alert names
    ```
 
-5. **Schedule it** - one symlink, one cron entry:
+   If the container predates the bind mount, `up -d` recreates it; an already
+   running container needs `docker compose restart prometheus` after any edit
+   under `rules/`. The lifecycle API is off in this compose stack, so
+   `POST /-/reload` returns `403 Lifecycle API is not enabled` - restart, do
+   not reload.
+
+5. **Schedule it** - one wrapper script, one cron entry (ADR-0041):
+
+   `hermes cron create --script` resolves the path and refuses anything whose
+   realpath leaves `~/.hermes/scripts/`, so a symlink into the repo fails with
+   `Script path escapes the scripts directory via traversal`. Write a one-line
+   wrapper instead; the policy and collector stay versioned in this repo.
 
    ```
-   ln -s ~/code/frontdesk-intake/ops/agent/run.sh ~/.hermes/scripts/frontdesk-ops.sh
+   cat > ~/.hermes/scripts/frontdesk-ops.sh <<'EOF'
+   #!/usr/bin/env bash
+   exec bash "$HOME/code/frontdesk-intake/ops/agent/run.sh"
+   EOF
+   chmod +x ~/.hermes/scripts/frontdesk-ops.sh
    hermes cron create --name "frontdesk ops loop" --script frontdesk-ops.sh \
      --workdir ~/code/frontdesk-intake --deliver local "0 */6 * * *" \
      "Act on the ops-agent instructions and evidence report injected below."
@@ -109,7 +124,20 @@ collector and read the output - it has no unit tests by decision
 
 `#52`'s last acceptance line, now "one alert rule fires and is observed by
 the ops agent". Lower a threshold past the node's current value in
-`rules/node.yaml` (e.g. `NodeLoadHigh` to `node_load15 > 0`), `docker
-compose up -d prometheus`, wait past the rule's `for`, then
+`rules/node.yaml` (e.g. `NodeLoadHigh` to `node_load15 > 0` with `for: 1m`),
+`docker compose restart prometheus`, wait past the `for`, then
 `python3 ops/agent/collect.py` shows it under `[FIRING]`. Restore the file
-and re-`up`. Do not commit the lowered value.
+and restart again. Do not commit the lowered value.
+
+Done twice on 2026-09-22; the second run is what the collector prints now:
+
+```
+- [FIRING] NodeLoadHigh severity=warning since=2026-09-22T15:31:04Z value=1.7e-01
+  expr: node_load15 > 0
+  summary: frontdesk 15-minute load above 8 for 30m
+```
+
+The summary still says 8 and 30m while the expression was `> 0`: annotations
+template over `$labels` and `$value`, never over the live threshold. That is
+why `collect.py` prints `expr:` from `/api/v1/rules` alongside `value=`
+(ADR-0041 review). Read those two; the prose is only a hint.

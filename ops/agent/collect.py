@@ -91,6 +91,28 @@ def section(title: str):
     print(f"\n## {title}")
 
 
+def _alert_exprs() -> dict[str, str]:
+    """alertname -> the expression Prometheus is actually evaluating.
+
+    An alert's `summary`/`description` are templates over `$labels` and
+    `$value`, not over the rule's threshold, so prose like "load above 8 for
+    30m" survives verbatim even when the loaded expression says something
+    else (seen during the 2026-09-22 firing test). Printing the live `expr`
+    next to `value=` means the agent never has to trust the prose. Best
+    effort: an empty dict just omits the line.
+    """
+    try:
+        groups = _get_json(f"{PROM_URL}/api/v1/rules")["data"]["groups"]
+    except Exception:  # noqa: BLE001 - the alert list above already reported reachability
+        return {}
+    return {
+        r["name"]: r["query"]
+        for g in groups
+        for r in g.get("rules", [])
+        if r.get("type") == "alerting" and r.get("query")
+    }
+
+
 def report_alerts() -> None:
     section("Prometheus alerts (rules/node.yaml; no Alertmanager, by design)")
     try:
@@ -101,6 +123,7 @@ def report_alerts() -> None:
     active = [a for a in alerts if a.get("state") in ("firing", "pending")]
     if not active:
         print("none firing or pending")
+    exprs = _alert_exprs() if active else {}
     for a in active:
         labels = a.get("labels", {})
         ann = a.get("annotations", {})
@@ -108,6 +131,9 @@ def report_alerts() -> None:
             f"- [{a['state'].upper()}] {labels.get('alertname')} severity={labels.get('severity')} "
             f"since={a.get('activeAt')} value={a.get('value')}"
         )
+        expr = exprs.get(labels.get("alertname", ""))
+        if expr:
+            print(f"  expr: {_truncate(' '.join(expr.split()), 200)}")
         if ann.get("summary"):
             print(f"  summary: {ann['summary']}")
         if ann.get("description"):

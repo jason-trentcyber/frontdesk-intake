@@ -2,9 +2,15 @@
 # The ops agent's cron entry point (#32, ADR-0040). Hermes cron runs this
 # with `--script` before each agent run and injects its stdout into the
 # prompt, so the instructions and the evidence travel together and both
-# live in the repo. The scheduler side is one symlink:
+# live in the repo. The scheduler side is a one-line wrapper, not a symlink:
+# `hermes cron create --script` resolves the path and refuses anything whose
+# realpath leaves ~/.hermes/scripts (ADR-0041, amending ADR-0040 §4).
 #
-#   ln -s ~/code/frontdesk-intake/ops/agent/run.sh ~/.hermes/scripts/frontdesk-ops.sh
+#   cat > ~/.hermes/scripts/frontdesk-ops.sh <<'EOF'
+#   #!/usr/bin/env bash
+#   exec bash "$HOME/code/frontdesk-intake/ops/agent/run.sh"
+#   EOF
+#   chmod +x ~/.hermes/scripts/frontdesk-ops.sh
 #   hermes cron create --name "frontdesk ops loop" --script frontdesk-ops.sh \
 #     --workdir ~/code/frontdesk-intake --deliver local "0 */6 * * *" \
 #     "Act on the ops-agent instructions and evidence report injected below."
