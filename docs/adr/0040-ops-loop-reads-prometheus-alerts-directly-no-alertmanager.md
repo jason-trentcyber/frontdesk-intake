@@ -2,8 +2,6 @@
 
 Status: decided 2026-09-22 (#32, #52, #29 stage 3). Supersedes ADR-0026's Alertmanager deferral trigger and #52's "one test alert fires to Alertmanager" wording. Amends nothing else.
 
-Amended 2026-09-22 (activation, #32): §4's last sentence says "the scheduler holds one symlink and one cron entry". A symlink is not possible. `hermes cron create --script` resolves the path and rejects anything whose realpath leaves `~/.hermes/scripts/` - `Script path escapes the scripts directory via traversal`. The scheduler holds a **one-line wrapper script** (`exec bash "$HOME/code/frontdesk-intake/ops/agent/run.sh"`) and one cron entry. The decision this mechanism serves is unchanged and is the point: the agent's entire behaviour stays versioned in this repo, and the scheduler holds no policy. Recipe in `ops/agent/README.md` §5. The decision text of §4 is left as written, per `AGENTS.md`.
-
 ## Context
 
 REQUIREMENTS S6 and `docs/AI-GOVERNANCE.md` specify the sixth SDLC guardrail: a scheduled agent with read-only cluster and log access reviews alerts and error logs, files GitHub issues with evidence and a proposed fix, and never applies changes. The README has said "specified, not built" against it since 2026-09-07. It was the last README claim about the SDLC that was false.
@@ -69,7 +67,7 @@ Every 6 hours (`0 */6 * * *`), matching the issue and the `for` windows. Deliver
 - #52's acceptance criteria are all met or explicitly superseded (§1); it closes with this PR's merge and the post-merge steps. #29 stage 3's "alerts" half is this; its dashboards half (pipeline latency, tokens per org, eval trend) is still open and is what remains of #29 with 2b.
 - `ops/` is a new top-level directory, linted by the worker's ruff invocation (`ruff check . ../ops` in both CI and `make lint`). It has no tests: the collector's logic is formatting over three JSON APIs, and a test would mock all three and prove nothing about the live shapes. Its verification is running it, which the PR body records.
 - A wrong or noisy rule costs an unnecessary issue, not a page. That is the right failure mode for a first alert set and why Alertmanager was not worth its container.
-- Post-merge, Jason-run, in order: `make bootstrap-rbac` (the SA); `kubectl create token ops-reader -n frontdesk --duration=8760h` into a kubeconfig at `~/.kube/ops-reader.kubeconfig` (recipe in `ops/agent/README.md`); the negative `can-i` checks; `docker compose up -d prometheus` on the VPS (the rules mount is new); the wrapper script and `hermes cron create` line from `run.sh`'s header; then one manual `hermes cron run`.
+- Post-merge, Jason-run, in order: `make bootstrap-rbac` (the SA); `kubectl create token ops-reader -n frontdesk --duration=8760h` into a kubeconfig at `~/.kube/ops-reader.kubeconfig` (recipe in `ops/agent/README.md`); the negative `can-i` checks; `docker compose up -d prometheus` on the VPS (the rules mount is new); the symlink and `hermes cron create` line from `run.sh`'s header; then one manual `hermes cron run`.
 
 ## Alternatives rejected
 

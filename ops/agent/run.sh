@@ -4,7 +4,7 @@
 # prompt, so the instructions and the evidence travel together and both
 # live in the repo. The scheduler side is a one-line wrapper, not a symlink:
 # `hermes cron create --script` resolves the path and refuses anything whose
-# realpath leaves ~/.hermes/scripts (ADR-0040, amended).
+# realpath leaves ~/.hermes/scripts (ADR-0041, amending ADR-0040 §4).
 #
 #   cat > ~/.hermes/scripts/frontdesk-ops.sh <<'EOF'
 #   #!/usr/bin/env bash

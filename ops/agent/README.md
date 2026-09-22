@@ -100,7 +100,7 @@ collector and read the output - it has no unit tests by decision
    `POST /-/reload` returns `403 Lifecycle API is not enabled` - restart, do
    not reload.
 
-5. **Schedule it** - one wrapper script, one cron entry:
+5. **Schedule it** - one wrapper script, one cron entry (ADR-0041):
 
    `hermes cron create --script` resolves the path and refuses anything whose
    realpath leaves `~/.hermes/scripts/`, so a symlink into the repo fails with
@@ -129,14 +129,15 @@ the ops agent". Lower a threshold past the node's current value in
 `python3 ops/agent/collect.py` shows it under `[FIRING]`. Restore the file
 and restart again. Do not commit the lowered value.
 
-Done once on 2026-09-22, before the kubeconfig existed:
+Done twice on 2026-09-22; the second run is what the collector prints now:
 
 ```
-- [FIRING] NodeLoadHigh severity=warning since=2026-09-22T14:58:04Z value=7e-02
+- [FIRING] NodeLoadHigh severity=warning since=2026-09-22T15:31:04Z value=1.7e-01
+  expr: node_load15 > 0
   summary: frontdesk 15-minute load above 8 for 30m
 ```
 
-The summary text is the unmodified annotation, which is why it says 8 and 30m
-while the firing expression was `> 0` - the annotation is a template over
-`$labels`, not over the live threshold. Worth remembering when reading a real
-alert: trust `value=`, not the prose.
+The summary still says 8 and 30m while the expression was `> 0`: annotations
+template over `$labels` and `$value`, never over the live threshold. That is
+why `collect.py` prints `expr:` from `/api/v1/rules` alongside `value=`
+(ADR-0041 review). Read those two; the prose is only a hint.
