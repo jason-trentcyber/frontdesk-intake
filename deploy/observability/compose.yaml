@@ -1,14 +1,18 @@
 # Observability for the frontdesk cluster, running on the Hermes VPS
 # (trentcyber-main) rather than the 4 GB k3s node - ADR-0010 put it here
-# deliberately, and ADR-0026 records why this is Prometheus + Grafana only
-# rather than the four-service stack #52's body describes.
+# deliberately. ADR-0026 records why it started as Prometheus + Grafana only;
+# ADR-0039 adds Loki once its triggers were met (memory measured, and the
+# cluster's otel-collector given something to ship). Alertmanager is still
+# deferred - it waits on an alert rule someone would act on (#32).
 #
-# Everything binds to 127.0.0.1. Nothing is published to the internet:
-# Grafana is reached over the tailnet or an SSH tunnel, same as the Hermes
-# dashboard. No new public attack surface (ADR-0002's posture).
+# Everything binds to 127.0.0.1 EXCEPT Loki's ingest port, which must accept
+# the collector's connection from the node over the tailnet. ufw admits it
+# on tailscale0 only (ADR-0039 §4). Grafana is reached over the tailnet or
+# an SSH tunnel, same as the Hermes dashboard. No new public attack surface
+# (ADR-0002's posture).
 #
 # Memory limits are set from measurement, not from vendor defaults - see
-# ADR-0026's Context for the free-memory arithmetic that constrains them.
+# ADR-0026's and ADR-0039's Context for the free-memory arithmetic.
 services:
   prometheus:
     image: prom/prometheus:v3.7.3
@@ -28,6 +32,27 @@ services:
       resources:
         limits:
           memory: 320M
+
+  loki:
+    # #29 stage 2a (ADR-0039). Receives pod logs from the cluster's
+    # otel-collector over the tailnet on its native OTLP endpoint.
+    image: grafana/loki:3.7.8
+    restart: unless-stopped
+    command:
+      - -config.file=/etc/loki/loki.yaml
+    network_mode: host
+    volumes:
+      - ./loki/loki.yaml:/etc/loki/loki.yaml:ro
+      - loki-data:/loki
+    deploy:
+      resources:
+        limits:
+          # Set from ADR-0039's measurement (2.8 GB available, Prometheus +
+          # Grafana at ~170 MB combined), not from headroom. The ingester
+          # holds chunks in memory before flushing; 512M is comfortable
+          # for one node's logs. Revised after measuring steady state, the
+          # same way ADR-0026 §6 set the other two.
+          memory: 512M
 
   grafana:
     image: grafana/grafana:12.3.1
@@ -57,6 +82,7 @@ services:
       - grafana-data:/var/lib/grafana
     depends_on:
       - prometheus
+      - loki
     deploy:
       resources:
         limits:
@@ -64,4 +90,5 @@ services:
 
 volumes:
   prometheus-data:
+  loki-data:
   grafana-data:

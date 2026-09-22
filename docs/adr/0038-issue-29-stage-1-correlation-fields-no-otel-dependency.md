@@ -1,6 +1,6 @@
 # ADR-0038: #29 splits; stage 1 is correlation fields in the logs both services already write, with no OTel dependency
 
-Status: decided 2026-09-21 (#29). Narrows #29. Amends nothing.
+Status: decided 2026-09-21 (#29). Narrows #29. Amends nothing. §1's stage table corrected by ADR-0039: stage 2 splits into 2a (collector → Loki pipeline, no app code) and 2b (OTel SDK), and the collector was never blocked on #52 — #52's Loki was blocked on the collector having something to ship.
 
 ## Context
 

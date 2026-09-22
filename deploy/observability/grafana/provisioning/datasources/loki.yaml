@@ -1,0 +1,23 @@
+apiVersion: 1
+
+# Same idempotency pattern as prometheus.yaml: deleteDatasources first so a
+# uid change re-provisions cleanly onto an existing install instead of
+# crash-looping Grafana.
+deleteDatasources:
+  - name: Loki
+    orgId: 1
+
+datasources:
+  - name: Loki
+    type: loki
+    # Pinned for the same reason Prometheus's is: a stage-3 dashboard will
+    # reference it, and a generated uid differs per install.
+    uid: loki
+    access: proxy
+    # host networking, so Loki is on this same loopback.
+    url: http://127.0.0.1:3100
+    isDefault: false
+    jsonData:
+      # Loki 3.x default; stated so a query timeout is a deliberate number.
+      timeout: 60
+      maxLines: 1000
