@@ -619,13 +619,13 @@ jobs:
         working-directory: worker
         run: |
           uv run ruff --version
-          uv run ruff check .
+          uv run ruff check . ../ops
 
       - name: Ruff format check
         working-directory: worker
         run: |
           uv run ruff --version
-          uv run ruff format --check .
+          uv run ruff format --check . ../ops
 
       - name: Pyright
         working-directory: worker

@@ -1,0 +1,53 @@
+# The ops agent's identity (#32, ADR-0040). Read-only, cluster-wide, and
+# deliberately narrower than "view": no secrets, no configmaps, no
+# exec/portforward/attach (those are `create` on a subresource, and no
+# verb here is `create`). Its token becomes a kubeconfig on the Hermes VPS
+# that the scheduled ops job reads with; nothing in the cluster mounts it.
+#
+# Cluster-wide rather than per-namespace because the questions an ops loop
+# asks span namespaces: a CoreDNS warning in kube-system, a collector restart
+# in observability, a failed backup Job in frontdesk. Listing pods and events
+# everywhere is what `kubectl get events -A` already gives an admin; this
+# grants that and nothing that writes.
+#
+# Acceptance from the issue, run after `make bootstrap-rbac`:
+#   kubectl auth can-i create deployments -n frontdesk --as=system:serviceaccount:frontdesk:ops-reader   # no
+#   kubectl auth can-i get secrets -n frontdesk --as=system:serviceaccount:frontdesk:ops-reader          # no
+#   kubectl auth can-i get pods/log -n frontdesk --as=system:serviceaccount:frontdesk:ops-reader         # yes
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ops-reader
+  namespace: frontdesk
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ops-reader
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "events", "nodes", "namespaces", "persistentvolumeclaims"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets", "statefulsets", "daemonsets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods", "nodes"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ops-reader
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ops-reader
+subjects:
+  - kind: ServiceAccount
+    name: ops-reader
+    namespace: frontdesk

@@ -1,6 +1,6 @@
 # ADR-0026: Observability ships as Prometheus + Grafana only; Loki and Alertmanager wait for memory
 
-Status: decided 2026-09-11, applied. Loki deferral and the "When to add Loki" triggers superseded by ADR-0039 (triggers 1 and 2 met 2026-09-22, measured); Alertmanager deferral unchanged.
+Status: decided 2026-09-11, applied. Loki deferral and the "When to add Loki" triggers superseded by ADR-0039 (triggers 1 and 2 met 2026-09-22, measured); Alertmanager deferral closed by ADR-0040 (the ops agent reads Prometheus's `/api/v1/alerts` directly; Alertmanager is not deployed).
 
 Narrows the scope of issue #52, whose body specifies "Prometheus, Loki,
 Grafana, Alertmanager, with mem limits totalling <= 1.7 GB". ADR-0010's
