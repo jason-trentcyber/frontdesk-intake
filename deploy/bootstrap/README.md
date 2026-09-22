@@ -200,6 +200,15 @@ kubectl --kubeconfig /tmp/deployer.kubeconfig get pods -n kube-system   # Forbid
 kubectl --kubeconfig /tmp/deployer.kubeconfig get pods -n frontdesk     # allowed (empty until the first deploy)
 ```
 
+## RBAC for the ops agent (`#32`, ADR-0040)
+
+`rbac/ops-reader.yaml` is the second identity `make bootstrap-rbac` applies:
+ServiceAccount `ops-reader` bound to a cluster-wide read-only ClusterRole
+(pods, logs, events, workloads, jobs, metrics - no secrets, no configmaps,
+no exec/portforward). Its token lives on the VPS only, minted with the
+same recipe as above; the kubeconfig, the negative `can-i` tests and the
+cron registration are in `ops/agent/README.md`.
+
 ## Acceptance (paste real output into the PR)
 
 ```

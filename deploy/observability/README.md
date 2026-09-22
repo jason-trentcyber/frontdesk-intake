@@ -3,8 +3,9 @@
 Watches the frontdesk k3s node from `trentcyber-main` over the tailnet.
 ADR-0010 put the stack off-node; **ADR-0026** records why it started as two
 services rather than #52's four; **ADR-0039** adds Loki once 0026's triggers
-were met and gives the cluster's otel-collector something to ship. Alertmanager
-is still deferred — it waits on an alert rule someone would act on (#32).
+were met and gives the cluster's otel-collector something to ship. There is no
+Alertmanager: the alert rules under `prometheus/rules/` are read by the ops
+agent (`ops/agent/`, ADR-0040) straight from Prometheus's `/api/v1/alerts`.
 
 ## What this does and does not do
 
@@ -15,8 +16,14 @@ is still deferred — it waits on an alert rule someone would act on (#32).
   Grafana Explore by namespace/pod/container and by the JSON fields the
   app writes (`org_id`, `request_id`, ADR-0038).
 - **Does not**: per-pod or per-container metrics (needs the cadvisor
-  follow-up in ADR-0026), traces (#29 stage 2b), log dashboards or alerting
-  (stage 3). Nothing here pages anyone.
+  follow-up in ADR-0026), traces (#29 stage 2b), log dashboards (stage 3).
+  Nothing here pages anyone: the four node alert rules in
+  `prometheus/rules/node.yaml` are evaluated by Prometheus and read by the
+  ops agent every 6 h (`ops/agent/`, ADR-0040), which files an issue rather
+  than sending a notification. After editing a rule, `promtool check rules`
+  on the pinned image (recipe in the file header) and
+  `docker compose up -d prometheus` — the rules are a bind mount, so a
+  restart is enough, but CI does not validate them.
 
 ## Run it
 

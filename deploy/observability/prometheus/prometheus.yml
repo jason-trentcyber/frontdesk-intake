@@ -20,6 +20,12 @@ global:
   external_labels:
     cluster: frontdesk
 
+# Alert rules (#32, ADR-0040). No `alerting:` block: there is no Alertmanager
+# (ADR-0026's deferral stands). Firing alerts are read from Prometheus's own
+# /api/v1/alerts by the scheduled ops agent - see ops/agent/.
+rule_files:
+  - /etc/prometheus/rules/*.yaml
+
 scrape_configs:
   # Prometheus' own metrics - free, and the first thing to check when a
   # dashboard looks wrong (is the scrape failing, or is the target down?).

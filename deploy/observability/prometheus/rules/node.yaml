@@ -1,0 +1,80 @@
+# First alert rules for the frontdesk node (#32, ADR-0040). Loaded by
+# Prometheus via `rule_files`; there is no Alertmanager (ADR-0026's
+# deferral stands - see ADR-0040 for why the consumer is the ops agent
+# reading /api/v1/alerts, not a notification router). "Firing" here means
+# visible to that agent on its next run, which is every 6 h, so the `for`
+# windows are sized for a scheduled reader, not a pager.
+#
+# Only node-exporter is scraped (ADR-0026 §2), so every rule below is a
+# node-level fact. Per-pod rules arrive with the cadvisor follow-up.
+#
+# Validate before committing (CI does not run promtool):
+#   docker run --rm --entrypoint promtool \
+#     -v "$PWD/deploy/observability/prometheus/rules:/rules:ro" \
+#     prom/prometheus:v3.7.3 check rules /rules/node.yaml
+groups:
+  - name: frontdesk-node
+    rules:
+      - alert: NodeExporterDown
+        # Nothing else in this file can evaluate if this fires; it is the
+        # first thing the ops agent should look at.
+        expr: up{job="node-exporter"} == 0
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "node-exporter on {{ $labels.node }} unreachable for 10m"
+          description: >-
+            Prometheus on the VPS cannot scrape {{ $labels.instance }} over the
+            tailnet. Either the node is down, tailscale on one end is down, or
+            node-exporter's pod is not Running. Check `tailscale status` on the
+            VPS and `kubectl -n observability get pods` first.
+
+      - alert: NodeMemoryAvailableLow
+        # 4 GB node running Postgres, the worker's ONNX model and three app
+        # pods; ADR-0009 and ADR-0023 sized it. Below 15% available the next
+        # pod roll (a deploy, a backup Job) is the thing that OOM-kills
+        # something.
+        expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.15
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.node }} has under 15% memory available for 30m"
+          description: >-
+            {{ $value | humanizePercentage }} of memory available. Look for a
+            pod above its request (`kubectl top pod -A`) or a leak in a
+            long-running one; the worker holds the embedding model resident by
+            design (ADR-0023).
+
+      - alert: NodeRootFilesystemLow
+        # Postgres data, the backups PVC (14-day retention) and container
+        # images all live on the 40 GB root disk. 15% is ~6 GB, about two
+        # weeks of headroom at the current backup size.
+        expr: >-
+          node_filesystem_avail_bytes{mountpoint="/", fstype!~"tmpfs|overlay"}
+            / node_filesystem_size_bytes{mountpoint="/", fstype!~"tmpfs|overlay"} < 0.15
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.node }} root filesystem under 15% free for 1h"
+          description: >-
+            {{ $value | humanizePercentage }} free on /. Check the backups PVC
+            first (`retentionDays` in the chart values), then
+            `crictl images` for unpruned image layers.
+
+      - alert: NodeLoadHigh
+        # 4 vCPU box. Sustained load above 2x cores means something is
+        # spinning, not that the node is busy - the eval and triage paths are
+        # bursty, not continuous.
+        expr: node_load15 > 8
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.node }} 15-minute load above 8 for 30m"
+          description: >-
+            load15={{ $value | printf "%.1f" }} on a 4 vCPU node. Correlate with
+            worker logs in Loki for a retry loop, or a backup Job that never
+            finished.
