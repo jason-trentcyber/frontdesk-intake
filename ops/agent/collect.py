@@ -61,7 +61,8 @@ def _parse_lookback(s: str) -> timedelta:
     if not m:
         raise SystemExit(f"OPS_LOOKBACK must look like 30m/6h/1d, got {s!r}")
     n, unit = int(m.group(1)), m.group(2)
-    return timedelta(**{{"s": "seconds", "m": "minutes", "h": "hours", "d": "days"}[unit]: n})
+    unit_name = {"s": "seconds", "m": "minutes", "h": "hours", "d": "days"}[unit]
+    return timedelta(**{unit_name: n})
 
 
 def _get_json(url: str, params: dict[str, str] | None = None) -> dict:
@@ -154,6 +155,11 @@ def report_loki(window: timedelta) -> None:
     for r in sorted(counts, key=lambda r: -float(r["value"][1])):
         container = r["metric"].get("k8s_container_name", "?")
         print(f"- {container}: {int(float(r['value'][1]))} lines")
+        # The label value goes back into a LogQL selector. Container names are
+        # DNS labels, so this never matches today; it is a guard, not a fix.
+        if not re.fullmatch(r"[a-z0-9]([a-z0-9-]*[a-z0-9])?", container):
+            print(f"  samples: skipped, container name {container!r} is not a DNS label")
+            continue
         try:
             sample = _get_json(
                 f"{LOKI_URL}/loki/api/v1/query_range",
