@@ -121,6 +121,20 @@ export function registerRequestsRoute(app: FastifyInstance, deps: RequestsRouteD
     assertTriageMessage(message);
     await queue.send(message);
 
+    // #29 stage 1 (ADR-0038 §4): the bridge line. This is the only place
+    // the HTTP-hop id and the requests-row id appear together, and without
+    // it the two halves of a request's life cannot be joined: `reqId` does
+    // not cross the queue (the TriageMessage contract carries orgId and
+    // requestId only, and rejects unknown keys), while the worker logs
+    // org_id/request_id and has never seen an HTTP header. Joining
+    // api-side logs on reqId to worker-side logs on request_id requires
+    // exactly one record containing both.
+    //
+    // Field names are snake_case to match the worker's JsonFormatter keys
+    // (logging_config.py) so one query over a merged stream matches both
+    // services; `req.log` supplies reqId, so it is not repeated here.
+    req.log.info({ org_id: orgId, request_id: requestId, source }, "request enqueued for triage");
+
     return reply.code(201).send({
       trackingToken,
       trackingUrl: `${publicWebOrigin}/t/${trackingToken}`,
