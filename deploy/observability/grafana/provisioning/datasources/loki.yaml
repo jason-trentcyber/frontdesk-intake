@@ -14,8 +14,10 @@ datasources:
     # reference it, and a generated uid differs per install.
     uid: loki
     access: proxy
-    # host networking, so Loki is on this same loopback.
-    url: http://127.0.0.1:3100
+    # Loki binds the tailnet address, not loopback (ADR-0028 §2 - the bind
+    # address is the control). Grafana shares host networking, so it
+    # reaches that address directly.
+    url: http://100.103.239.6:3100
     isDefault: false
     jsonData:
       # Loki 3.x default; stated so a query timeout is a deliberate number.

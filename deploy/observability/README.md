@@ -30,29 +30,32 @@ docker compose up -d
 `.env` is gitignored and has no default in `compose.yaml` — compose fails
 rather than starting with a guessable password.
 
-Prometheus and Grafana bind `127.0.0.1` only. **Loki binds all interfaces on
-3100** because the node's collector has to reach it, and the host firewall
-admits that port on the tailnet interface only — see the next section. Nothing
-is published publicly.
+Prometheus and Grafana bind `127.0.0.1` only. **Loki binds the VPS's tailnet
+address (`100.103.239.6:3100`)** — not loopback, which the node cannot reach,
+and not `0.0.0.0`, which ADR-0028 forbids. The bind address is the control;
+it is reachable from the tailnet and from nothing else. Nothing is published
+publicly.
 
 ## One-time firewall step (Jason-run, ADR-0039 §4)
 
 The VPS's ufw is default-deny inbound and does not exempt `tailscale0`, so
-the collector's connection is dropped until this rule exists:
+the collector's packets are dropped before they reach Loki's listener until
+this rule exists. It makes the already-scoped port *reachable*; the bind
+address above is what makes it *safe* (ADR-0028 §2).
 
 ```
 sudo ufw allow in on tailscale0 to any port 3100 proto tcp comment 'loki ingest from tailnet (ADR-0039)'
 ```
 
-`in on tailscale0` binds the rule to the interface: 3100 is not reachable from
-the public address regardless of what binds it. Verify from the VPS itself:
+Verify from the VPS itself:
 
 ```
 sudo ufw status | grep 3100
-curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3100/ready
+curl -s -o /dev/null -w '%{http_code}\n' http://100.103.239.6:3100/ready
 ```
 
-`200` from `/ready` means Loki is up; the ufw line means the node can reach it.
+`200` from `/ready` means Loki is up on the tailnet address; the ufw line
+means the node can reach it.
 
 ## The cluster half
 
@@ -62,7 +65,7 @@ Apply it the same way as every other bootstrap component — `make bootstrap`
 re-runs the pinned `helm upgrade --install`. Then check logs are arriving:
 
 ```
-curl -s 'http://127.0.0.1:3100/loki/api/v1/labels' | python3 -m json.tool
+curl -s 'http://100.103.239.6:3100/loki/api/v1/labels' | python3 -m json.tool
 ```
 
 Should list `k8s_namespace_name`, `k8s_pod_name`, `k8s_container_name`,

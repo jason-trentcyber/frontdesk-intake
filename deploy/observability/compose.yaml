@@ -5,11 +5,13 @@
 # cluster's otel-collector given something to ship). Alertmanager is still
 # deferred - it waits on an alert rule someone would act on (#32).
 #
-# Everything binds to 127.0.0.1 EXCEPT Loki's ingest port, which must accept
-# the collector's connection from the node over the tailnet. ufw admits it
-# on tailscale0 only (ADR-0039 §4). Grafana is reached over the tailnet or
-# an SSH tunnel, same as the Hermes dashboard. No new public attack surface
-# (ADR-0002's posture).
+# Everything binds a specific address (ADR-0028 §2: the bind address is
+# the control, a host firewall is not). Prometheus and Grafana bind
+# 127.0.0.1. Loki binds the VPS's tailnet address, because the node's
+# collector has to reach it and that is the only interface the node can
+# see - so it is reachable from exactly the network that needs it and no
+# other. Grafana is reached over the tailnet or an SSH tunnel, same as the
+# Hermes dashboard. No new public attack surface (ADR-0002's posture).
 #
 # Memory limits are set from measurement, not from vendor defaults - see
 # ADR-0026's and ADR-0039's Context for the free-memory arithmetic.

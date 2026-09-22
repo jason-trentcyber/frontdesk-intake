@@ -5,10 +5,9 @@
 # file was #16's in-cluster placeholder - OTLP in, debug out - which ADR-0026
 # left in place until there was somewhere to send to.
 #
-# Verified before commit: `helm template` on chart 0.172.1 with these
-# values renders a DaemonSet + ConfigMap, and the rendered `relay` config
-# passes `otelcol-contrib validate` on image 0.159.0 (the same tag the
-# cluster runs). Both checks are in ADR-0039's PR body.
+# Not covered by CI's helm-lint (that job lints deploy/chart). Before
+# changing this file, render it and validate the result on the pinned
+# image; the recipe is in ADR-0039's Consequences.
 
 # DaemonSet, not Deployment: the filelog receiver reads /var/log/pods on the
 # node it runs on. A Deployment covers one node's logs, which on a one-node

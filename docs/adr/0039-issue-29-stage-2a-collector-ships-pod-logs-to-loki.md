@@ -50,22 +50,24 @@ The `logs` pipeline gets an `otlphttp` exporter with `endpoint: http://100.103.2
 `deploy/observability/compose.yaml` gains one service:
 
 - `grafana/loki:3.7.8` (current release, checked 2026-09-22).
-- `network_mode: host`, binding `0.0.0.0:3100`, **not** `127.0.0.1` - this is the one service in the stack that must accept a connection from another machine, and that machine reaches it over the tailnet. The tailnet ACL and the VPS host firewall are the boundary (§4). Loki's own auth is off (`auth_enabled: false`) - single tenant, single writer, same reasoning as Grafana's anonymous viewer.
+- `network_mode: host`, **bound to the VPS's tailnet address `100.103.239.6:3100`** - not `127.0.0.1`, which the node cannot reach, and not `0.0.0.0`, which ADR-0028 §2 forbids ("if the port is published on `0.0.0.0`, it is public, whatever `ufw status` prints"). This is the one service in the stack that must accept a connection from another machine; binding the tailnet address makes it reachable from exactly the network that needs it. The bind address is the control, in the same versioned file as the thing it controls - which is ADR-0028's whole argument. If `tailscale0` is down, Loki fails to bind and compose reports it, rather than silently listening publicly. Grafana, sharing host networking, reaches the same address. Loki's own auth is off (`auth_enabled: false`) - single tenant, single writer, same reasoning as Grafana's anonymous viewer.
 - Filesystem storage under a named volume; TSDB index; **7-day retention** via the compactor. Prometheus keeps 15d; logs are larger per day and the ops loop (#32) reads the last few hours. Raise it when a real question needs older logs.
 - Memory limit **512M**, set from the measurement above rather than from the box's headroom. Loki's ingester holds chunks in memory before flushing; 512M is comfortable for one node's logs and leaves >2 GB available. It is measured after apply, and the limit is revised then if steady state says so, the same way ADR-0026 §6 set Prometheus and Grafana.
 - A Loki datasource is provisioned into Grafana read-only from the repo, next to the Prometheus one.
 
 **Alertmanager stays deferred.** ADR-0026's third trigger - an alert rule someone would act on - is still unmet. That rule is #32's, and it lands with #32.
 
-### 4. The VPS host firewall admits port 3100 from the tailnet interface only
+### 4. The VPS host firewall admits port 3100 on the tailnet interface - as a reachability precondition, not as the control
 
-The VPS's ufw is default-deny inbound with 2222/80/443 open. The tailnet interface (`tailscale0`) is not exempted, so a connection from the node to `100.103.239.6:3100` is dropped today. One rule is needed:
+ADR-0028 §2 is categorical: no ADR may cite a host firewall rule as the reason a container port is safe. This section does not. §3's bind address is the control - Loki listens on `100.103.239.6` and nothing else, and that fact is in a versioned file that a diff reviews. What ufw does here is different and narrower: the VPS is default-deny inbound with 2222/80/443 open and no exemption for `tailscale0`, so a packet from the node to `100.103.239.6:3100` is **dropped before it reaches the listener**. The rule makes the bound port reachable; it does not make it safe.
 
 ```
 sudo ufw allow in on tailscale0 to any port 3100 proto tcp comment 'loki ingest from tailnet (ADR-0039)'
 ```
 
-`in on tailscale0` binds the rule to the interface, so the port is not reachable from the public address regardless of what binds it. This is a host firewall change and it is a **Jason-run step**, listed in the PR body as such, not applied by an agent (AGENTS.md: no agent applies infra). ADR-0028 is the precedent for treating a host firewall as a real control on this box, and the reason it is recorded here rather than done quietly.
+`in on tailscale0` scopes the allowance to the interface Loki is already bound to. If the rule were wider (no interface constraint), nothing would change about what is reachable - the listener is still on the tailnet address only - but the rule would be misleading about intent, so it is not.
+
+This is a host firewall change on the development host, which ADR-0028 §4 places out of scope for agents and under ADR-0013's admin-access governance. It is a **Jason-run step**, listed in the PR body as such (AGENTS.md: no agent applies infra), and recorded here so the next reader knows it exists rather than discovering it from a `connection refused` in the collector's logs.
 
 ### 5. ADR-0038 §1's stage table is corrected by this ADR, not edited
 
@@ -92,6 +94,16 @@ ADR-0038 is decided; its table row for stage 2 stays as written, with a status-l
 - The VPS runs three observability services. Measured after apply with the same `free -m` / `docker stats` pair as ADR-0026, recorded in the PR. If available memory falls below 1 GB with Hermes running, the retention or the Loki limit comes down first, and this ADR's §3 numbers get a status pointer.
 - REQUIREMENTS N3's "Loki" is met. "kube-prometheus-stack", "OTel" (the SDK half), and the three named dashboards remain unmet.
 - `bootstrap.sh` is unchanged - the same `helm upgrade --install` with the same pinned chart version picks up the new values. Re-running it is the deploy step for the cluster half.
+- **`deploy/bootstrap/values/otel-collector.yaml` is not covered by CI.** The `helm-lint` job lints `deploy/chart`, not the bootstrap values, so a broken collector config is caught only at `make bootstrap` - on the live node. Before changing that file, render and validate it against the pinned versions, which is what was done for this ADR:
+
+  ```
+  helm pull open-telemetry/opentelemetry-collector --version 0.172.1 --untar -d /tmp/otelchart
+  helm template otel-collector /tmp/otelchart/opentelemetry-collector -n observability -f deploy/bootstrap/values/otel-collector.yaml > /tmp/rendered.yaml
+  sed -n '/^  relay: |$/,/^kind:/p' /tmp/rendered.yaml | sed '1d;$d' | sed 's/^    //' > /tmp/relay.yaml
+  docker run --rm -v /tmp/relay.yaml:/etc/relay.yaml:ro -e MY_POD_IP=127.0.0.1 otel/opentelemetry-collector-contrib:0.159.0 validate --config=/etc/relay.yaml
+  ```
+
+  Exit 0 from the last line means the collector binary accepts the config the chart will actually install. The Loki config has the equivalent: `docker run --rm -v "$PWD/deploy/observability/loki/loki.yaml:/etc/loki/loki.yaml:ro" grafana/loki:3.7.8 -config.file=/etc/loki/loki.yaml -verify-config`.
 - #52's acceptance criteria: "Loki shows k3s pod logs" and "VPS free memory stays above 1 GB with Hermes running" become checkable with this PR. "One test alert fires to Alertmanager" remains open against stage 3. #52 stays open until then, per ADR-0026's own "not closed on a partial implementation."
 
 ## Alternatives rejected
@@ -101,6 +113,6 @@ ADR-0038 is decided; its table row for stage 2 stays as written, with a status-l
 - **Promtail / Grafana Alloy on the node instead of the collector.** A second agent on the node doing what the already-running collector can do. The collector is the component #29 named and the one 2b builds on.
 - **Push logs from the app processes directly (pino transport, Python handler) to Loki.** Bypasses the collector entirely and puts a network destination in every service's logging config. The pipeline's whole value is that the app writes to stdout and the platform ships it.
 - **Bind Loki to `127.0.0.1` and reverse-tunnel from the node.** An SSH tunnel as a permanent ingest path is a process to keep alive and a key to manage. The tailnet already is the private network; using it as one is the point of ADR-0013.
-- **Open 3100 without the interface constraint.** Reachable from the public address, defended only by ufw's default policy ordering. `in on tailscale0` costs nothing and makes the exposure explicit.
+- **Bind Loki to `0.0.0.0` and rely on ufw to scope it to `tailscale0`.** This was the first draft of this ADR, and the review agent blocked it on ADR-0028 §2 - correctly. A `0.0.0.0` bind is public whatever the firewall prints; the firewall is a rule typed into one host's shell, not a versioned control a diff reviews. Binding the tailnet address costs nothing, puts the control in the compose-adjacent config where ADR-0028 wants it, and fails closed (no bind) if the interface is absent instead of failing open. The ufw rule is still needed, but as §4 explains, for reachability - not as the thing that makes the port safe.
 - **Do 2a and 2b as one PR.** 2a is two files; 2b is SDK integration in two languages with new dependencies and an eval-gate fixture check. Bundling them gates a two-file infra change on application work, which is what ADR-0038's original stage 2 did and why it was wrong.
 - **Edit ADR-0038's stage table in place.** It is decided. The correction is here, with a status pointer there.
