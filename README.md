@@ -6,7 +6,7 @@ Customers submit requests through a public form. The system classifies each requ
 
 **Status:** deployed and serving on a single k3s node. Public intake, tracking, staff sign-in, the staff queue, request detail with citations, and approve / edit / reject with an audit trail all work end to end. Five of the six SDLC guardrails below are built and enforced; the sixth says so.
 
-**Live:** [frontdesk.jtrent.dev](https://frontdesk.jtrent.dev) · Board: [projects/1](https://github.com/users/jason-trentcyber/projects/1) · Docs: [`REQUIREMENTS.md`](REQUIREMENTS.md), [`docs/adr/`](docs/adr/README.md), [`docs/AI-GOVERNANCE.md`](docs/AI-GOVERNANCE.md)
+**Live:** [frontdesk.jtrent.dev](https://frontdesk.jtrent.dev) · Writeup: [I let AI agents write 94 pull requests](https://jtrent.dev/writing/ai-first-sdlc/) · Board: [projects/1](https://github.com/users/jason-trentcyber/projects/1) · Docs: [`REQUIREMENTS.md`](REQUIREMENTS.md), [`docs/adr/`](docs/adr/README.md), [`docs/AI-GOVERNANCE.md`](docs/AI-GOVERNANCE.md)
 
 ### Try it
 
