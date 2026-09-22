@@ -12,10 +12,16 @@ import signal
 from .consumer import run_forever, run_forever_ingest
 from .db import create_pool
 from .ingestion.embedder import Embedder
+from .logging_config import configure_logging
 from .queue.create import create_ingest_queue, create_queue
 from .settings import load_settings
 
-logging.basicConfig(level=logging.INFO, format='{"level": "%(levelname)s", "msg": %(message)r}')
+# #29 stage 1 (ADR-0038 §2). The format string this replaced emitted
+# `%(message)r` - Python repr, single-quoted - so ordinary log lines were not
+# valid JSON, and it referenced none of the `extra=` fields consumer.py
+# passes, so every org_id/request_id/msg_id was discarded. See
+# logging_config.py's module docstring and tests/test_logging_config.py.
+configure_logging(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
