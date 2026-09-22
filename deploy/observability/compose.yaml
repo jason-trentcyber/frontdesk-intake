@@ -75,6 +75,14 @@ services:
       # admin account below still gates edits.
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      # Grafana 12 hides Explore from Viewers unless this is set - the
+      # `Explore` page still works if you type /explore, but the sidebar
+      # entry is gone and nothing says why. Found the first time anyone
+      # tried to read Loki logs (ADR-0039): the anonymous viewer saw only
+      # the frontdesk-node dashboard and had to log in as admin. "Edit"
+      # here means ad-hoc queries in Explore, not saving dashboards -
+      # those are still provisioned read-only (allowUiUpdates: false).
+      GF_USERS_VIEWERS_CAN_EDIT: "true"
       GF_AUTH_BASIC_ENABLED: "true"
       GF_SECURITY_ADMIN_USER: admin
       # Read from the environment (deploy/observability/.env, gitignored).

@@ -30,6 +30,16 @@ docker compose up -d
 `.env` is gitignored and has no default in `compose.yaml` — compose fails
 rather than starting with a guessable password.
 
+**On an existing install, `up -d` only starts services that are new or
+changed.** Grafana reads `provisioning/` at startup, so a new datasource or
+dashboard file is invisible until Grafana restarts — `up -d` alone left the
+Loki datasource missing the first time (Grafana had been up 10 days). After
+any change under `grafana/`:
+
+```
+docker compose restart grafana
+```
+
 Prometheus and Grafana bind `127.0.0.1` only. **Loki binds the VPS's tailnet
 address (`100.103.239.6:3100`)** — not loopback, which the node cannot reach,
 and not `0.0.0.0`, which ADR-0028 forbids. The bind address is the control;
@@ -86,9 +96,13 @@ then open <http://127.0.0.1:3300/d/frontdesk-node>. Anonymous access is
 `Viewer`, so no login is needed to look; the `admin` account from `.env`
 gates edits.
 
-**Logs:** Explore → datasource `Loki` → e.g.
+**Logs:** <http://127.0.0.1:3300/explore> → datasource `Loki` → e.g.
 `{k8s_namespace_name="frontdesk"} | json | request_id="<uuid>"` follows one
-request through api and worker on the ids ADR-0038 put there.
+request through api and worker on the ids ADR-0038 put there. Explore is a
+sidebar entry (compass icon), not a dashboard. It is visible to the
+anonymous viewer only because `GF_USERS_VIEWERS_CAN_EDIT` is set in
+`compose.yaml` — Grafana 12 hides it from Viewers otherwise, and the first
+attempt to read logs ended in a login as `admin` to find it.
 
 ## Editing a dashboard
 
@@ -126,10 +140,13 @@ with no error shown.
 
 | service | steady-state | limit |
 |---|---|---|
-| prometheus | 30 MiB (80 MiB after 11 days) | 320M |
-| grafana | 98 MiB | 200M |
-| loki | _measure after apply_ | 512M |
+| prometheus | 30 MiB (44 MiB after 11 days) | 320M |
+| grafana | 96 MiB | 200M |
+| loki | 60 MiB (first hour, one node's logs) | 512M |
+| otel-collector (on the node, DaemonSet) | 90 Mi | 256Mi |
 
 ADR-0026 and ADR-0039 have the VPS memory arithmetic that constrains these.
-Fill in Loki's steady-state after its first day and revise the limit if it
-says so.
+Loki and the collector were measured 2026-09-22 in the first hour after
+apply; VPS available memory was 2,834 MB before and after, i.e. unchanged.
+Re-measure the collector if `kubectl -n observability top pod` shows it
+above ~200 Mi — the 256Mi limit predates the `filelog` receiver.
