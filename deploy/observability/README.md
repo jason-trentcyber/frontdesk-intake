@@ -1,18 +1,22 @@
-# Observability (Prometheus + Grafana, on the Hermes VPS)
+# Observability (Prometheus + Loki + Grafana, on the Hermes VPS)
 
 Watches the frontdesk k3s node from `trentcyber-main` over the tailnet.
-ADR-0010 put the stack off-node; **ADR-0026** records why it is two services
-rather than #52's four, and what has to change before Loki and Alertmanager
-join.
+ADR-0010 put the stack off-node; **ADR-0026** records why it started as two
+services rather than #52's four; **ADR-0039** adds Loki once 0026's triggers
+were met and gives the cluster's otel-collector something to ship. Alertmanager
+is still deferred — it waits on an alert rule someone would act on (#32).
 
 ## What this does and does not do
 
 - **Does**: node memory, CPU by mode, load, root filesystem, disk I/O,
   network throughput, uptime, and scrape health for the `frontdesk` node,
-  every 30 s, retained 15 days.
+  every 30 s, retained 15 days. **Every pod's logs**, shipped by the
+  cluster's otel-collector over the tailnet, retained 7 days, queryable in
+  Grafana Explore by namespace/pod/container and by the JSON fields the
+  app writes (`org_id`, `request_id`, ADR-0038).
 - **Does not**: per-pod or per-container metrics (needs the cadvisor
-  follow-up in ADR-0026), log aggregation, or alerting. Nothing here pages
-  anyone. Reading pod logs is still `kubectl logs`.
+  follow-up in ADR-0026), traces (#29 stage 2b), log dashboards or alerting
+  (stage 3). Nothing here pages anyone.
 
 ## Run it
 
@@ -26,7 +30,49 @@ docker compose up -d
 `.env` is gitignored and has no default in `compose.yaml` — compose fails
 rather than starting with a guessable password.
 
-Both services bind `127.0.0.1` only. Nothing is published publicly.
+Prometheus and Grafana bind `127.0.0.1` only. **Loki binds the VPS's tailnet
+address (`100.103.239.6:3100`)** — not loopback, which the node cannot reach,
+and not `0.0.0.0`, which ADR-0028 forbids. The bind address is the control;
+it is reachable from the tailnet and from nothing else. Nothing is published
+publicly.
+
+## One-time firewall step (Jason-run, ADR-0039 §4)
+
+The VPS's ufw is default-deny inbound and does not exempt `tailscale0`, so
+the collector's packets are dropped before they reach Loki's listener until
+this rule exists. It makes the already-scoped port *reachable*; the bind
+address above is what makes it *safe* (ADR-0028 §2).
+
+```
+sudo ufw allow in on tailscale0 to any port 3100 proto tcp comment 'loki ingest from tailnet (ADR-0039)'
+```
+
+Verify from the VPS itself:
+
+```
+sudo ufw status | grep 3100
+curl -s -o /dev/null -w '%{http_code}\n' http://100.103.239.6:3100/ready
+```
+
+`200` from `/ready` means Loki is up on the tailnet address; the ufw line
+means the node can reach it.
+
+## The cluster half
+
+`deploy/bootstrap/values/otel-collector.yaml` turns the collector into a
+DaemonSet that tails `/var/log/pods` and exports to Loki's OTLP endpoint.
+Apply it the same way as every other bootstrap component — `make bootstrap`
+re-runs the pinned `helm upgrade --install`. Then check logs are arriving:
+
+```
+curl -s 'http://100.103.239.6:3100/loki/api/v1/labels' | python3 -m json.tool
+```
+
+Should list `k8s_namespace_name`, `k8s_pod_name`, `k8s_container_name`,
+`k8s_node_name`. An empty label set with Loki `/ready` at 200 means the
+collector is not reaching it — check the ufw rule first, then
+`kubectl -n observability logs ds/otel-collector-opentelemetry-collector-agent`
+for `connection refused` against `100.103.239.6:3100`.
 
 ## Reach Grafana
 
@@ -39,6 +85,10 @@ ssh -L 3300:127.0.0.1:3300 trentcyber
 then open <http://127.0.0.1:3300/d/frontdesk-node>. Anonymous access is
 `Viewer`, so no login is needed to look; the `admin` account from `.env`
 gates edits.
+
+**Logs:** Explore → datasource `Loki` → e.g.
+`{k8s_namespace_name="frontdesk"} | json | request_id="<uuid>"` follows one
+request through api and worker on the ids ADR-0038 put there.
 
 ## Editing a dashboard
 
@@ -66,17 +116,20 @@ is fine and the problem is on this side.
 
 Grafana cannot re-provision a **uid change** onto a datasource that already
 exists — it exits with `Datasource provisioning error: data source not found`
-and crash-loops. `provisioning/datasources/prometheus.yaml` carries a
-`deleteDatasources` block so it is idempotent against an existing install.
-The datasource uid is pinned to `prometheus` because the dashboard JSON
-references it; if it were auto-generated, every panel would render empty with
-no error shown.
+and crash-loops. Both files in `provisioning/datasources/` carry a
+`deleteDatasources` block so they are idempotent against an existing install.
+The datasource uids are pinned (`prometheus`, `loki`) because dashboard JSON
+references them; if they were auto-generated, every panel would render empty
+with no error shown.
 
 ## Footprint (measured, not documented defaults)
 
 | service | steady-state | limit |
 |---|---|---|
-| prometheus | 30 MiB | 320M |
+| prometheus | 30 MiB (80 MiB after 11 days) | 320M |
 | grafana | 98 MiB | 200M |
+| loki | _measure after apply_ | 512M |
 
-ADR-0026 has the VPS memory arithmetic that constrains these.
+ADR-0026 and ADR-0039 have the VPS memory arithmetic that constrains these.
+Fill in Loki's steady-state after its first day and revise the limit if it
+says so.

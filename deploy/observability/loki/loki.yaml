@@ -1,0 +1,82 @@
+# Loki on the Hermes VPS - #29 stage 2a, ADR-0039. Receives pod logs from
+# the cluster's otel-collector over the tailnet on Loki's native OTLP
+# endpoint (/otlp/v1/logs). Single tenant, single writer, filesystem
+# storage. Sized for one node's logs; ADR-0039 §3 has the numbers.
+#
+# Validated before commit with `loki -config.file=... -verify-config`
+# on the pinned image (ADR-0039's PR body).
+
+# Single tenant: the tailnet ACL and the host firewall are the boundary,
+# the same reasoning as Grafana's anonymous viewer (ADR-0026 §4).
+auth_enabled: false
+
+server:
+  # Bound to the VPS's tailnet address, not 0.0.0.0. ADR-0028 §2: the bind
+  # address is the control, a host firewall is not - and a port on 0.0.0.0
+  # is public whatever `ufw status` prints. The tailnet interface is the
+  # only one the node's collector can reach, so binding to it is exactly
+  # the reachability required and nothing more. If tailscale0 is down,
+  # Loki fails to bind and compose says so, rather than listening publicly.
+  http_listen_address: 100.103.239.6
+  http_listen_port: 3100
+  grpc_listen_address: 127.0.0.1
+  grpc_listen_port: 9096
+  log_level: warn
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: "2026-09-22"
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+limits_config:
+  # 7 days. Prometheus keeps 15d; logs are larger per day and the ops loop
+  # (#32) reads the last few hours. Raise it when a real question needs
+  # older logs, and record that question.
+  retention_period: 168h
+  # OTLP resource attributes that become index labels. Everything else
+  # arrives as structured metadata (queryable, not indexed), which is
+  # where org_id/request_id from the JSON body belong - they are high
+  # cardinality and must not be labels.
+  otlp_config:
+    resource_attributes:
+      attributes_config:
+        - action: index_label
+          attributes:
+            - k8s.namespace.name
+            - k8s.pod.name
+            - k8s.container.name
+            - k8s.node.name
+
+compactor:
+  working_directory: /loki/compactor
+  retention_enabled: true
+  delete_request_store: filesystem
+
+# One-node stack: no per-component memory ballast, no query frontend
+# sharding. Loki's monolithic target runs everything in one process.
+ingester:
+  chunk_idle_period: 5m
+  chunk_retain_period: 30s
+  wal:
+    enabled: true
+    dir: /loki/wal
+
+analytics:
+  reporting_enabled: false

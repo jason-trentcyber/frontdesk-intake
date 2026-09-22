@@ -1,18 +1,29 @@
 # open-telemetry/opentelemetry-collector, pinned in bootstrap.sh.
 #
-# #16 scope is in-cluster only (ADR-0010): OTLP receivers with a debug/
-# no-op exporter, so the collector is healthy and swappable. #52 points the
-# exporters at the Hermes VPS once there is somewhere to send to — this
-# file is expected to change then, not before.
-mode: deployment
-replicaCount: 1
+# #29 stage 2a (ADR-0039): the collector reads every pod's logs on its node
+# and ships them to Loki on the Hermes VPS over the tailnet. Until then this
+# file was #16's in-cluster placeholder - OTLP in, debug out - which ADR-0026
+# left in place until there was somewhere to send to.
+#
+# Not covered by CI's helm-lint (that job lints deploy/chart). Before
+# changing this file, render it and validate the result on the pinned
+# image; the recipe is in ADR-0039's Consequences.
 
-# Core image is enough: only otlp/debug/batch/memory_limiter are in scope
-# for #16 (no filelog, no contrib-only receivers/exporters).
+# DaemonSet, not Deployment: the filelog receiver reads /var/log/pods on the
+# node it runs on. A Deployment covers one node's logs, which on a one-node
+# cluster is all of them - and silently stops being all of them on the day a
+# second node is added. The chart's daemonset mode also mounts the hostPath
+# volumes the receiver needs.
+mode: daemonset
+
+# Contrib image at the version already pinned: `filelog` and `otlphttp` are
+# contrib-only components, so the core image cannot run this config. Same
+# tag as before, so the only variable in this change is the config.
 image:
-  repository: otel/opentelemetry-collector
+  repository: otel/opentelemetry-collector-contrib
+  tag: "0.159.0"
 command:
-  name: otelcol
+  name: otelcol-contrib
 
 resources:
   requests:
@@ -22,23 +33,49 @@ resources:
     cpu: 200m
     memory: 256Mi
 
+presets:
+  # The chart's own logs preset: wires the filelog receiver with the k8s
+  # container-log parser, include/exclude globs, and the /var/log/pods
+  # hostPath. Hand-rolling the same receiver reproduces what the chart
+  # maintainers already test.
+  logsCollection:
+    enabled: true
+    # The collector's own logs looping through itself is the single most
+    # common self-inflicted Loki cardinality problem.
+    includeCollectorLogs: false
+
 config:
   receivers:
-    # Only OTLP in scope for #16; the chart's other default receivers
-    # (jaeger, zipkin, prometheus self-scrape) are unused surface area.
+    # Only OTLP (and the preset's filelog) in scope; the chart's other
+    # default receivers are unused surface area.
     jaeger: null
     zipkin: null
     prometheus: null
 
   exporters:
     debug: {}
+    # Loki 3.x's native OTLP ingest endpoint. Resource attributes become
+    # labels without a translation step, and the deprecated `loki` exporter
+    # is avoided. 100.103.239.6 is trentcyber-main's tailnet address - a
+    # literal for the same reason prometheus.yml carries the node's tailnet
+    # address as a literal: the tailnet gives it stability, and a DNS layer
+    # would be a new dependency.
+    otlphttp/loki:
+      endpoint: http://100.103.239.6:3100/otlp
 
   service:
     pipelines:
       logs:
-        receivers: [otlp]
+        # NOTE: the chart renames these on render - `filelog` becomes
+        # `file_log` and `otlphttp` becomes `otlp_http` (see the chart's
+        # _helpers.tpl). The rendered names are what the collector sees and
+        # they validate; the canonical names go here.
+        receivers: [otlp, filelog]
         processors: [memory_limiter, batch]
-        exporters: [debug]
+        exporters: [otlphttp/loki]
+      # Nothing sends metrics or traces yet. Stage 2b (the OTel SDK) decides
+      # their destinations; until then they stay on debug so the pipelines
+      # are healthy and swappable.
       metrics:
         receivers: [otlp]
         processors: [memory_limiter, batch]
