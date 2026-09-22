@@ -54,4 +54,6 @@ Title: `ops: <component> - <symptom in under 10 words>`. One issue per distinct 
 
 Under 120 words. Either `No findings. Watching: <anything pending or noisy worth a human eye, or "nothing">` or `Filed #<n>: <title>` per issue plus the watch line. If a source was UNREACHABLE in the report, that is itself a finding for Prometheus/Loki (file it) and a note for `gh` (do not loop).
 
+One exception: `NO KUBECONFIG ...` in the cluster section is an incomplete setup on this box, not an incident. Say so in the final output and file nothing for it - `ops/agent/README.md` §3 is a human-run step and an issue would refile every 6 hours until someone does it.
+
 --- EVIDENCE REPORT ---
