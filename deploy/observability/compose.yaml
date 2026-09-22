@@ -6,12 +6,18 @@
 # deferred - it waits on an alert rule someone would act on (#32).
 #
 # Everything binds a specific address (ADR-0028 §2: the bind address is
-# the control, a host firewall is not). Prometheus and Grafana bind
-# 127.0.0.1. Loki binds the VPS's tailnet address, because the node's
-# collector has to reach it and that is the only interface the node can
-# see - so it is reachable from exactly the network that needs it and no
-# other. Grafana is reached over the tailnet or an SSH tunnel, same as the
-# Hermes dashboard. No new public attack surface (ADR-0002's posture).
+# the control, a host firewall is not). These services use
+# `network_mode: host`, so there is no `ports:` list to carry the
+# "127.0.0.1:PORT:PORT" form ADR-0028 §1 describes - the bind address
+# lives in each service's own config instead (--web.listen-address,
+# GF_SERVER_HTTP_ADDR, http_listen_address). Same control, different
+# file; Docker installs no DNAT rule either way. Prometheus and Grafana
+# bind 127.0.0.1. Loki binds the VPS's tailnet address, because the
+# node's collector has to reach it and that is the only interface the
+# node can see - so it is reachable from exactly the network that needs
+# it and no other. Grafana is reached over the tailnet or an SSH tunnel,
+# same as the Hermes dashboard. No new public attack surface (ADR-0002's
+# posture).
 #
 # Memory limits are set from measurement, not from vendor defaults - see
 # ADR-0026's and ADR-0039's Context for the free-memory arithmetic.
