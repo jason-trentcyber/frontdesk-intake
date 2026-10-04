@@ -2,6 +2,8 @@
 
 Status: decided 2026-09-07. Amends step 3 of ADR-0008's decision (review and provenance gates) for bot-authored dependency PRs only. ADR-0008 otherwise stands.
 
+Note 2026-10-04: the review-agent credential is now `CLAUDE_CODE_OAUTH_TOKEN` (Claude subscription token) rather than `ANTHROPIC_API_KEY`. Everything below applies unchanged to the new secret: it lives only in the Actions store and is not duplicated into the Dependabot store, and the exemption stands.
+
 ## Context
 ADR-0008 step 3 requires two things of every PR: a blocking `review-agent` pass, and provenance (exactly one `agent:*` label plus a filled-in `Model:` line) enforced by `pr-lint`. The ADR was written when every PR came from Jason, Claude Code, or a Hermes subagent. Dependabot was enabled later, in #12, and filed its first batch on 2026-09-07: PRs #44–#49 (github-script 9, checkout 7, setup-node 7, eslint 10, typescript 6, vitest 5).
 
