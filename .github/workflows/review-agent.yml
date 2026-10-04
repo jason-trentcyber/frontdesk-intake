@@ -155,8 +155,11 @@ jobs:
           # observed ~$0.019/turn is ~$0.57, still inside the budget, so the
           # budget stays the binding constraint on every PR this repo has
           # produced (#59 raised this 6 -> 15 for the same reason).
+          # No --bare: bare mode never reads OAuth (only ANTHROPIC_API_KEY), so
+          # the subscription token would fail with "Not logged in". The runner
+          # is a fresh VM with no ~/.claude, and the repo has no .claude/ or
+          # .mcp.json, so there is no hook/MCP context for non-bare to pick up.
           cat prompt.txt | claude -p \
-            --bare \
             --append-system-prompt-file docs/review-rubric.md \
             --output-format json \
             --json-schema "$(cat schema.json)" \
